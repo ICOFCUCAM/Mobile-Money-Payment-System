@@ -8,17 +8,17 @@ async function submit(req, res) {
 }
 
 async function list(req, res) {
-  const transactions = service.listTransactions(req.school.id, req.query);
+  const transactions = await service.listTransactions(req.school.id, req.query);
   res.json({ transactions });
 }
 
 async function get(req, res) {
-  const transaction = service.getTransaction(req.school.id, req.params.id);
+  const transaction = await service.getTransaction(req.school.id, req.params.id);
   res.json({ transaction });
 }
 
 async function summary(req, res) {
-  res.json({ summary: service.summary(req.school.id) });
+  res.json({ summary: await service.summary(req.school.id) });
 }
 
 module.exports = { submit, list, get, summary };

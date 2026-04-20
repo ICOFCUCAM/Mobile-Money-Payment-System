@@ -4,7 +4,7 @@ const MTNProvider = require('./MTNProvider');
 const OrangeProvider = require('./OrangeProvider');
 const config = require('../config');
 const { decrypt } = require('../core/encryption');
-const { getDb } = require('../core/database');
+const { db } = require('../core/database');
 const { NotFoundError, ValidationError } = require('../core/errors');
 
 const REGISTRY = {
@@ -28,13 +28,15 @@ function listProviders() {
  * Instantiate a provider for a given school by loading & decrypting its
  * stored credentials. Throws if the school hasn't configured this provider.
  */
-function getProviderForSchool(schoolId, providerId) {
+async function getProviderForSchool(schoolId, providerId) {
   const entry = REGISTRY[providerId];
   if (!entry) throw new ValidationError(`Unsupported provider: ${providerId}`);
 
-  const row = getDb()
-    .prepare('SELECT * FROM payment_configs WHERE school_id = ? AND provider = ? AND is_active = 1')
-    .get(schoolId, providerId);
+  const res = await db.query(
+    'SELECT * FROM payment_configs WHERE school_id = $1 AND provider = $2 AND is_active = TRUE',
+    [schoolId, providerId]
+  );
+  const row = res.rows[0];
   if (!row) throw new NotFoundError(`Provider ${providerId} not configured for this school`);
 
   const credentials = {

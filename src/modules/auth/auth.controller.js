@@ -20,7 +20,7 @@ async function createUser(req, res) {
 }
 
 async function listUsers(req, res) {
-  res.json({ users: service.listUsers(req.school.id) });
+  res.json({ users: await service.listUsers(req.school.id) });
 }
 
 module.exports = { login, me, createUser, listUsers };

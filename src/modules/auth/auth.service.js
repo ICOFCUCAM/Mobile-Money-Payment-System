@@ -2,7 +2,7 @@
 
 const bcrypt = require('bcryptjs');
 const { v4: uuid } = require('uuid');
-const { getDb, writeAudit } = require('../../core/database');
+const { db, writeAudit } = require('../../core/database');
 const { signToken } = require('../../middleware/auth');
 const { AuthError, ConflictError, ValidationError } = require('../../core/errors');
 const { assertEmail, assertEnum, requireFields } = require('../../utils/validators');
@@ -12,29 +12,34 @@ const ROLES = ['admin', 'bursar', 'auditor'];
 
 async function login({ email, password, schoolSlug }, ip) {
   requireFields({ email, password }, ['email', 'password']);
-  const db = getDb();
-  const school = schoolSlug
-    ? db.prepare('SELECT * FROM schools WHERE slug = ? AND is_active = 1').get(schoolSlug)
-    : db
-        .prepare(
-          `SELECT s.* FROM schools s
-           JOIN users u ON u.school_id = s.id
-           WHERE u.email = ? AND s.is_active = 1
-           LIMIT 1`
-        )
-        .get(String(email).toLowerCase());
+  const emailLc = String(email).toLowerCase();
 
+  let schoolRes;
+  if (schoolSlug) {
+    schoolRes = await db.query('SELECT * FROM schools WHERE slug = $1 AND is_active = TRUE', [schoolSlug]);
+  } else {
+    schoolRes = await db.query(
+      `SELECT s.* FROM schools s
+       JOIN users u ON u.school_id = s.id
+       WHERE u.email = $1 AND s.is_active = TRUE
+       LIMIT 1`,
+      [emailLc]
+    );
+  }
+  const school = schoolRes.rows[0];
   if (!school) throw new AuthError('Invalid credentials');
 
-  const user = db
-    .prepare('SELECT * FROM users WHERE school_id = ? AND email = ? AND is_active = 1')
-    .get(school.id, String(email).toLowerCase());
+  const userRes = await db.query(
+    'SELECT * FROM users WHERE school_id = $1 AND email = $2 AND is_active = TRUE',
+    [school.id, emailLc]
+  );
+  const user = userRes.rows[0];
   if (!user) throw new AuthError('Invalid credentials');
 
   const ok = await bcrypt.compare(password, user.password_hash);
   if (!ok) throw new AuthError('Invalid credentials');
 
-  db.prepare('UPDATE users SET last_login_at = datetime(\'now\') WHERE id = ?').run(user.id);
+  await db.query('UPDATE users SET last_login_at = NOW() WHERE id = $1', [user.id]);
   writeAudit({ schoolId: school.id, userId: user.id, action: 'auth.login', ip });
 
   const token = signToken({ sub: user.id, school_id: school.id, role: user.role });
@@ -51,18 +56,20 @@ async function createUser(schoolId, payload, actor, ip) {
   assertEnum(payload.role, ROLES, 'role');
   if (payload.password.length < 8) throw new ValidationError('Password must be at least 8 characters');
 
-  const db = getDb();
-  const existing = db
-    .prepare('SELECT id FROM users WHERE school_id = ? AND email = ?')
-    .get(schoolId, payload.email.toLowerCase());
-  if (existing) throw new ConflictError('User with that email already exists');
+  const emailLc = payload.email.toLowerCase();
+  const existing = await db.query(
+    'SELECT id FROM users WHERE school_id = $1 AND email = $2',
+    [schoolId, emailLc]
+  );
+  if (existing.rows.length) throw new ConflictError('User with that email already exists');
 
   const passwordHash = await bcrypt.hash(payload.password, config.security.bcryptRounds);
   const id = uuid();
-  db.prepare(
+  await db.query(
     `INSERT INTO users (id, school_id, email, password_hash, full_name, role)
-     VALUES (?, ?, ?, ?, ?, ?)`
-  ).run(id, schoolId, payload.email.toLowerCase(), passwordHash, payload.fullName, payload.role);
+     VALUES ($1, $2, $3, $4, $5, $6)`,
+    [id, schoolId, emailLc, passwordHash, payload.fullName, payload.role]
+  );
 
   writeAudit({
     schoolId,
@@ -74,13 +81,15 @@ async function createUser(schoolId, payload, actor, ip) {
     ip
   });
 
-  return { id, email: payload.email.toLowerCase(), role: payload.role, fullName: payload.fullName };
+  return { id, email: emailLc, role: payload.role, fullName: payload.fullName };
 }
 
-function listUsers(schoolId) {
-  return getDb()
-    .prepare('SELECT id, email, full_name, role, is_active, last_login_at, created_at FROM users WHERE school_id = ?')
-    .all(schoolId);
+async function listUsers(schoolId) {
+  const res = await db.query(
+    'SELECT id, email, full_name, role, is_active, last_login_at, created_at FROM users WHERE school_id = $1',
+    [schoolId]
+  );
+  return res.rows;
 }
 
 module.exports = { login, createUser, listUsers, ROLES };

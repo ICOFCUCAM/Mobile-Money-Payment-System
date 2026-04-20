@@ -3,7 +3,7 @@
 const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const { v4: uuid } = require('uuid');
-const { getDb, writeAudit } = require('../../core/database');
+const { db, writeAudit } = require('../../core/database');
 const { encrypt } = require('../../core/encryption');
 const { hashApiKey } = require('../../middleware/auth');
 const { ConflictError, NotFoundError, ValidationError } = require('../../core/errors');
@@ -29,114 +29,111 @@ async function registerSchool(payload, ip) {
 
   const plan = payload.plan && getPlan(payload.plan) ? payload.plan : 'basic';
 
-  const db = getDb();
-  const existing = db.prepare('SELECT id FROM schools WHERE slug = ? OR email = ?').get(payload.slug, payload.email);
-  if (existing) throw new ConflictError('School with that slug or email already exists');
+  const existing = await db.query(
+    'SELECT id FROM schools WHERE slug = $1 OR email = $2',
+    [payload.slug, payload.email.toLowerCase()]
+  );
+  if (existing.rows.length) throw new ConflictError('School with that slug or email already exists');
 
   const schoolId = uuid();
   const userId = uuid();
   const apiKey = generateApiKey();
   const passwordHash = await bcrypt.hash(payload.password, config.security.bcryptRounds);
 
-  const tx = db.transaction(() => {
-    db.prepare(
+  await db.withTransaction(async (client) => {
+    await client.query(
       `INSERT INTO schools (id, name, slug, email, phone, api_key_hash, api_key_prefix, subscription_plan)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-    ).run(
-      schoolId,
-      payload.name,
-      payload.slug.toLowerCase(),
-      payload.email.toLowerCase(),
-      payload.phone || null,
-      apiKey.hash,
-      apiKey.prefix,
-      plan
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [
+        schoolId,
+        payload.name,
+        payload.slug.toLowerCase(),
+        payload.email.toLowerCase(),
+        payload.phone || null,
+        apiKey.hash,
+        apiKey.prefix,
+        plan
+      ]
     );
-    db.prepare(
+    await client.query(
       `INSERT INTO users (id, school_id, email, password_hash, full_name, role)
-       VALUES (?, ?, ?, ?, ?, 'admin')`
-    ).run(userId, schoolId, payload.email.toLowerCase(), passwordHash, payload.adminName);
-
-    db.prepare(
-      `INSERT INTO subscriptions (id, school_id, plan, status) VALUES (?, ?, ?, 'active')`
-    ).run(uuid(), schoolId, plan);
+       VALUES ($1, $2, $3, $4, $5, 'admin')`,
+      [userId, schoolId, payload.email.toLowerCase(), passwordHash, payload.adminName]
+    );
+    await client.query(
+      `INSERT INTO subscriptions (id, school_id, plan, status) VALUES ($1, $2, $3, 'active')`,
+      [uuid(), schoolId, plan]
+    );
   });
-  tx();
 
   writeAudit({ schoolId, userId, action: 'school.register', entity: 'school', entityId: schoolId, ip });
 
-  return {
-    school: getSchool(schoolId),
-    apiKey: apiKey.raw
-  };
+  return { school: await getSchool(schoolId), apiKey: apiKey.raw };
 }
 
-function getSchool(id) {
-  const row = getDb().prepare('SELECT * FROM schools WHERE id = ?').get(id);
+async function getSchool(id) {
+  const res = await db.query('SELECT * FROM schools WHERE id = $1', [id]);
+  const row = res.rows[0];
   if (!row) throw new NotFoundError('School not found');
   return sanitize(row);
 }
 
-function updateSchool(id, patch, actor) {
-  const db = getDb();
+async function updateSchool(id, patch, actor) {
   const allowed = ['name', 'phone', 'is_active'];
   const fields = [];
   const values = [];
+  let i = 1;
   for (const k of allowed) {
     if (patch[k] !== undefined) {
-      fields.push(`${k} = ?`);
+      fields.push(`${k} = $${i++}`);
       values.push(patch[k]);
     }
   }
   if (!fields.length) throw new ValidationError('No updatable fields supplied');
   values.push(id);
-  db.prepare(`UPDATE schools SET ${fields.join(', ')}, updated_at = datetime('now') WHERE id = ?`).run(...values);
+  await db.query(`UPDATE schools SET ${fields.join(', ')}, updated_at = NOW() WHERE id = $${i}`, values);
   writeAudit({ schoolId: id, userId: actor && actor.id, action: 'school.update', entity: 'school', entityId: id, metadata: patch });
   return getSchool(id);
 }
 
 /** Rotate the school's API key. Returns the new plaintext key once. */
-function rotateApiKey(schoolId, actor) {
+async function rotateApiKey(schoolId, actor) {
   const key = generateApiKey();
-  getDb()
-    .prepare('UPDATE schools SET api_key_hash = ?, api_key_prefix = ?, updated_at = datetime(\'now\') WHERE id = ?')
-    .run(key.hash, key.prefix, schoolId);
+  await db.query(
+    'UPDATE schools SET api_key_hash = $1, api_key_prefix = $2, updated_at = NOW() WHERE id = $3',
+    [key.hash, key.prefix, schoolId]
+  );
   writeAudit({ schoolId, userId: actor && actor.id, action: 'school.rotate_api_key', entity: 'school', entityId: schoolId });
   return key.raw;
 }
 
 // ---------- Payment config management ----------
 
-function upsertPaymentConfig(schoolId, payload, actor) {
+async function upsertPaymentConfig(schoolId, payload, actor) {
   requireFields(payload, ['provider', 'api_key', 'api_secret']);
   const providerId = String(payload.provider).toUpperCase();
   if (!REGISTRY[providerId]) throw new ValidationError(`Unsupported provider: ${providerId}`);
-
-  const db = getDb();
-  const existing = db
-    .prepare('SELECT id FROM payment_configs WHERE school_id = ? AND provider = ?')
-    .get(schoolId, providerId);
 
   const record = {
     api_key: encrypt(payload.api_key),
     api_secret: encrypt(payload.api_secret),
     base_url: payload.base_url || null,
     metadata: payload.metadata ? JSON.stringify(payload.metadata) : null,
-    is_active: payload.is_active === false ? 0 : 1
+    is_active: payload.is_active === false ? false : true
   };
 
-  if (existing) {
-    db.prepare(
-      `UPDATE payment_configs
-         SET api_key = ?, api_secret = ?, base_url = ?, metadata = ?, is_active = ?, updated_at = datetime('now')
-       WHERE id = ?`
-    ).run(record.api_key, record.api_secret, record.base_url, record.metadata, record.is_active, existing.id);
-  } else {
-    db.prepare(
-      `INSERT INTO payment_configs (id, school_id, provider, api_key, api_secret, base_url, metadata, is_active)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-    ).run(uuid(), schoolId, providerId, record.api_key, record.api_secret, record.base_url, record.metadata, record.is_active);
-  }
+  await db.query(
+    `INSERT INTO payment_configs (id, school_id, provider, api_key, api_secret, base_url, metadata, is_active)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+     ON CONFLICT (school_id, provider) DO UPDATE
+       SET api_key = EXCLUDED.api_key,
+           api_secret = EXCLUDED.api_secret,
+           base_url = EXCLUDED.base_url,
+           metadata = EXCLUDED.metadata,
+           is_active = EXCLUDED.is_active,
+           updated_at = NOW()`,
+    [uuid(), schoolId, providerId, record.api_key, record.api_secret, record.base_url, record.metadata, record.is_active]
+  );
 
   writeAudit({
     schoolId,
@@ -148,19 +145,20 @@ function upsertPaymentConfig(schoolId, payload, actor) {
   return listPaymentConfigs(schoolId);
 }
 
-function listPaymentConfigs(schoolId) {
-  return getDb()
-    .prepare('SELECT id, provider, base_url, is_active, api_key, created_at, updated_at FROM payment_configs WHERE school_id = ?')
-    .all(schoolId)
-    .map((r) => ({
-      id: r.id,
-      provider: r.provider,
-      base_url: r.base_url,
-      is_active: !!r.is_active,
-      has_credentials: !!r.api_key,
-      created_at: r.created_at,
-      updated_at: r.updated_at
-    }));
+async function listPaymentConfigs(schoolId) {
+  const res = await db.query(
+    'SELECT id, provider, base_url, is_active, api_key, created_at, updated_at FROM payment_configs WHERE school_id = $1',
+    [schoolId]
+  );
+  return res.rows.map((r) => ({
+    id: r.id,
+    provider: r.provider,
+    base_url: r.base_url,
+    is_active: !!r.is_active,
+    has_credentials: !!r.api_key,
+    created_at: r.created_at,
+    updated_at: r.updated_at
+  }));
 }
 
 function sanitize(school) {

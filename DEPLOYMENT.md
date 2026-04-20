@@ -1,124 +1,127 @@
 # Deployment Guide
 
-This document covers running the School Payment SaaS in production. The app is a stateless Node.js (Express) server backed by a relational database; any container platform (Render, Fly, Railway, AWS ECS, GKE, Kubernetes) will work.
+This project is a stateless Node.js/Express server backed by Postgres. It deploys as:
 
-## 1. Environment
+- **Vercel serverless functions** (recommended — zero-ops, free tier) via `vercel.json`.
+- **A Docker container** on any platform (Render, Fly, Railway, AWS ECS, Kubernetes).
+- **A plain Node.js process** (`npm start`) behind your own reverse proxy.
 
-Minimum required variables (see `.env.example`):
+## Quick Vercel deploy
 
-| Variable | Notes |
-| --- | --- |
-| `NODE_ENV` | Set to `production`. |
-| `PORT` | Port to bind. Defaults to 3000. |
-| `APP_URL` | Public URL (used in emails / links). |
-| `DATABASE_URL` | Path to SQLite file, or a Postgres URL once you migrate. |
-| `ENCRYPTION_KEY` | 64-character hex string (32 bytes). **Never rotate without re-encrypting `payment_configs`.** |
-| `JWT_SECRET` | Long random value. Rotate with care — invalidates sessions. |
-| `JWT_EXPIRES_IN` | Default `7d`. |
-| `WEBHOOK_SHARED_SECRET` | Optional platform-wide signing fallback. Schools' per-provider secrets remain the primary signature verifier. |
-| `RATE_LIMIT_WINDOW_MS` | Global limiter window. |
-| `RATE_LIMIT_MAX` | Requests per window per IP. |
-| `MTN_BASE_URL` / `ORANGE_BASE_URL` | Sandbox vs. production provider URLs. |
+Prerequisites: a Neon Postgres database (free tier) and — optionally — an Upstash Redis for Redis-backed rate limiting.
 
-Generate strong secrets:
+```bash
+# 1. Clone + install
+git clone <your-fork>
+cd mobile-money-payment-system
+npm ci
+
+# 2. Provision deps
+#    - Neon:    https://console.neon.tech/  (copy the "Direct connection" URL)
+#    - Upstash: https://console.upstash.com/ (Redis REST URL + token)
+
+# 3. Authenticate + link + set env
+npx vercel login
+npx vercel link                     # creates .vercel/project.json
+
+npx vercel env add DATABASE_URL production    # paste Neon URL with ?sslmode=require
+npx vercel env add ENCRYPTION_KEY production  # 64-char hex (see below)
+npx vercel env add JWT_SECRET production      # long random string
+npx vercel env add UPSTASH_REDIS_REST_URL production   # (optional)
+npx vercel env add UPSTASH_REDIS_REST_TOKEN production # (optional)
+
+# 4. Initial schema
+DATABASE_URL="<neon-url>" npm run migrate
+
+# 5. Ship
+npx vercel --prod
+```
+
+Generate a production-strength encryption key:
 
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-## 2. Building the image
+The `vercel.json` routes `/api/*`, `/webhooks/*` and `/health` through the serverless handler at `api/index.js`, while everything else serves the static SPA in `public/`.
 
-Example Dockerfile:
+### Vercel + serverless gotchas to know
 
-```dockerfile
-FROM node:20-bookworm-slim
-WORKDIR /app
-COPY package*.json ./
-RUN npm ci --omit=dev
-COPY . .
-ENV NODE_ENV=production
-EXPOSE 3000
-CMD ["node", "server.js"]
-```
+- **Cold starts reinit the DB pool.** The pool is module-scoped, so warm invocations reuse it. Schema creation is a one-shot `CREATE TABLE IF NOT EXISTS` executed on the first query per cold start — cheap and idempotent.
+- **`maxDuration: 15` seconds** is set in `vercel.json`. Provider API calls run in <2s normally; raise it on the Pro plan if Orange/MTN get slow.
+- **Logs**: Vercel's built-in logs + `logger.info/warn/error` output. For structured logs, swap `logger.js` with `pino`.
+- **No local filesystem.** The app writes nothing to disk — all state lives in Postgres.
+- **Rate limits**: set `UPSTASH_REDIS_REST_URL/TOKEN` or every instance keeps its own in-memory limiter (fine for tiny workloads, leaky at scale).
 
-Build and run:
+## Environment variables
+
+| Variable | Required | Notes |
+| --- | --- | --- |
+| `NODE_ENV` | yes | `production` on Vercel. |
+| `DATABASE_URL` | yes | Postgres connection string. Use `?sslmode=require` on Neon/managed. |
+| `DATABASE_POOL_MAX` | no | Default 5 in prod, 10 in dev. Keep low on Vercel to avoid exhausting Neon. |
+| `ENCRYPTION_KEY` | yes | 64-char hex (32 bytes). **Never rotate without re-encrypting `payment_configs`.** |
+| `JWT_SECRET` | yes | Long random value. Rotating invalidates all sessions. |
+| `JWT_EXPIRES_IN` | no | Default `7d`. |
+| `UPSTASH_REDIS_REST_URL` | no | Enables Redis-backed rate limits. |
+| `UPSTASH_REDIS_REST_TOKEN` | no | Paired with `_URL`. |
+| `RATE_LIMIT_WINDOW_MS` | no | Default 900000 (15 min). |
+| `RATE_LIMIT_MAX` | no | Default 300 req / window / IP. |
+| `WEBHOOK_SHARED_SECRET` | no | Fallback. Schools' per-provider secrets remain primary. |
+| `MTN_BASE_URL` | no | Sandbox by default. |
+| `ORANGE_BASE_URL` | no | Sandbox by default. |
+
+## Docker
 
 ```bash
 docker build -t school-payment-saas .
 docker run -p 3000:3000 --env-file .env school-payment-saas
 ```
 
-## 3. Database choices
+The shipped `Dockerfile` is a multi-stage build: `npm ci --omit=dev` in a `deps` stage then copies `node_modules` into a slim runtime. Includes a HEALTHCHECK hitting `/health`.
 
-### Development / single-node: SQLite (default)
+## Postgres
 
-The shipped schema (`src/core/database.js`) is SQLite-compatible and safe for one process. Mount `data/` to a persistent volume.
+- **Neon** (recommended for Vercel): serverless, free tier, auto-suspend.
+- **Supabase**: works identically — use the "Connection Pooling" URI.
+- **Self-hosted / RDS**: any Postgres 12+.
 
-### Production / scale: PostgreSQL
-
-The schema is standard SQL. To migrate:
-
-1. Install `pg` and replace `better-sqlite3` with `pg`'s async driver in `src/core/database.js` (the surface area is ~100 lines — keep the same `getDb()`/`writeAudit()` API).
-2. Translate `datetime('now')` → `now()`.
-3. Add a connection pool + migrations runner (`node-pg-migrate`, `knex`, …).
-4. Promote `transactions.external_id` uniqueness, add partial indexes on `status`.
+Run `npm run migrate` once — it executes the idempotent `CREATE TABLE IF NOT EXISTS` schema in `src/core/database.js`. For ongoing migrations in a real deployment, add `node-pg-migrate` or `prisma migrate`.
 
 ### Scaling knobs
 
-- Run multiple replicas behind a load balancer; the app is stateless.
-- Put the Postgres primary in the same AZ; use read replicas for reporting endpoints if needed.
-- Move rate limit state to Redis (swap `express-rate-limit` store to `rate-limit-redis`).
-- Terminate TLS at the LB; keep HTTP inside the VPC.
-- Pin the worker to `node --max-old-space-size=512` on small dynos.
+- Multiple replicas are safe; the app is stateless.
+- Prefer Postgres read replicas for `/api/dashboard/report` as volumes grow.
+- Use Upstash (or a self-hosted Redis) for rate limits and, eventually, sessions.
+- If you need >15s request budgets on Vercel, move long-running verifications to a background worker on Railway/Render and keep only the webhook receiver on Vercel.
 
-## 4. Tenancy strategy in production
+## Webhooks
 
-Two supported resolution modes — pick based on your infra:
-
-1. **Subdomain per school** — `greenwood.app.com`, `saint-mary.app.com`. Wildcard DNS + wildcard TLS cert (Let's Encrypt or managed). `tenantResolver.js` picks it up automatically.
-2. **Single domain + JWT/API key** — every request carries auth that identifies the school. Simpler to operate; recommended for API-first integrations.
-
-Either way, avoid querystring tenant identifiers — they're easy to spoof.
-
-## 5. Webhook endpoints
-
-Each provider needs a webhook URL configured in their dashboard:
+Configure each provider to call:
 
 ```
 POST https://<your-domain>/webhooks/MTN/<school-slug>
 POST https://<your-domain>/webhooks/ORANGE/<school-slug>
 ```
 
-- Signatures must be present (`X-MoMo-Signature`, `X-Orange-Signature`). Requests without a valid HMAC are rejected with 401.
-- Webhook ingestion is idempotent (`UNIQUE(school_id, provider, external_id)`). Providers may retry safely.
+Signatures must be present (`X-MoMo-Signature`, `X-Orange-Signature`). Requests without a valid HMAC are rejected with 401. Ingestion is idempotent (`UNIQUE(school_id, provider, external_id)`), so providers may retry safely.
 
-## 6. Observability
+## CI
 
-- **Logs**: structured lines via the built-in logger; ship via Fluent Bit / Vector to Loki / CloudWatch / Datadog.
-- **Health**: `GET /health` returns 200 + uptime. Add this as your liveness probe.
-- **Metrics**: wrap `paymentsService.submitTransaction` with Prometheus counters if you want latency + success rate per provider.
-- **Audit log**: `audit_logs` holds every sensitive mutation — export to your SIEM nightly.
+`.github/workflows/ci.yml` spins up a Postgres 16 service, runs `npm ci`, a syntax check over `src/`, `api/`, `tests/`, `npm run migrate`, and the end-to-end smoke test in `tests/smoke.js`.
 
-## 7. Backups
+## Observability
 
-- SQLite: nightly file snapshot of `data/*.db` to S3.
-- Postgres: managed daily snapshots + PITR. Test restores quarterly.
-- Rotate `ENCRYPTION_KEY` with a re-encryption job (read rows → decrypt with old key → encrypt with new → write). Never drop rows.
+- **Logs**: structured lines from `src/core/logger.js`; ship via Vercel log drains or Fluent Bit/Vector.
+- **Health**: `GET /health` returns 200 + uptime.
+- **Audit trail**: every sensitive mutation lands in `audit_logs`.
+- **Metrics**: wrap `paymentsService.submitTransaction` with Prometheus counters for payment latency/success rate per provider.
 
-## 8. Release checklist
+## Release checklist
 
-- [ ] Secrets set (JWT, ENCRYPTION_KEY, provider URLs).
-- [ ] `npm ci --omit=dev` in build.
-- [ ] Static dashboard under `public/` is bundled with the image.
-- [ ] `X-Forwarded-For` trusted (`app.set('trust proxy', 1)` is on).
-- [ ] TLS enforced at LB.
-- [ ] Webhook endpoints whitelisted on provider dashboards.
-- [ ] Alerting on 5xx rate, auth failures spike, pending transactions > threshold.
-
-## 9. Roadmap stubs
-
-- Swap in Redis-backed rate limiting and session store.
-- Stripe integration for the subscriptions module (replace the manual `paymentReference`).
-- Per-school webhook retry queue + dead-letter.
-- Export audit logs to S3 via a scheduled job.
-- Add e2e tests (Playwright) for the dashboard and integration tests for each provider using `nock`.
+- [ ] Secrets set (`DATABASE_URL`, `ENCRYPTION_KEY`, `JWT_SECRET`).
+- [ ] Schema migrated (`npm run migrate`).
+- [ ] Optional: Upstash configured for multi-instance rate limits.
+- [ ] Provider webhook URLs registered on MTN / Orange dashboards.
+- [ ] `/health` green.
+- [ ] Alerts on 5xx rate, auth failures spike, pending transactions > threshold.

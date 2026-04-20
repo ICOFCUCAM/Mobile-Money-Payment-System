@@ -9,24 +9,41 @@ A multi-tenant SaaS that lets schools accept tuition and fee payments over mobil
 - **Provider abstraction layer.** A small `BaseProvider` contract plus a `ProviderFactory` registry lets you drop in new providers (Wave, M-Pesa…) without touching the rest of the code.
 - **Pluggable subscription plans.** Plan features (max students, available providers, reports, audit logs) are enforced in middleware (`planGuard`).
 - **Secure by default.** AES-256-GCM encryption of provider credentials at rest, bcrypt password hashes, HMAC signature verification on webhooks, helmet, strict rate limiting, per-tenant isolation, audit log on every sensitive action.
-- **Batteries included.** Zero-dependency (SQLite via `better-sqlite3`) persistence for development, swap-friendly for Postgres in production. Static single-page dashboard with login, student mgmt, payment verification, provider config and subscription upgrade.
+- **Batteries included.** Postgres-backed (Neon/Vercel-PG/Supabase/self-hosted). Vercel serverless entry + `vercel.json` out of the box. Optional Upstash Redis for multi-instance rate limits. Static SPA dashboard.
 
-## Quick start
+## Quick start (local)
 
 ```bash
 cp .env.example .env
-# edit ENCRYPTION_KEY + JWT_SECRET to real random values
+# edit DATABASE_URL, ENCRYPTION_KEY, JWT_SECRET
 npm install
-npm start           # or: npm run dev (nodemon)
+npm run migrate       # creates schema in Postgres
+npm start             # or: npm run dev (nodemon)
 ```
 
 Open <http://localhost:3000/>, register a school, log in, configure a provider, add students, submit a payment.
 
-Generate production secrets:
+Generate secrets:
 
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
+
+## Deploy to Vercel
+
+Short version:
+
+```bash
+npx vercel login && npx vercel link
+npx vercel env add DATABASE_URL production     # Neon postgres URL (?sslmode=require)
+npx vercel env add ENCRYPTION_KEY production   # 64-char hex
+npx vercel env add JWT_SECRET production       # long random
+DATABASE_URL="<neon-url>" npm run migrate       # one-off schema create
+npx vercel --prod
+```
+
+Full guide + Upstash/Redis + Docker options: see [`DEPLOYMENT.md`](./DEPLOYMENT.md).
+API reference: [`openapi.yaml`](./openapi.yaml).
 
 ## Architecture
 

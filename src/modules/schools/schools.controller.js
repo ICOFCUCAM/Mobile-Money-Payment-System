@@ -8,26 +8,26 @@ async function register(req, res) {
 }
 
 async function me(req, res) {
-  res.json({ school: service.getSchool(req.school.id) });
+  res.json({ school: await service.getSchool(req.school.id) });
 }
 
 async function update(req, res) {
-  const school = service.updateSchool(req.school.id, req.body, req.user);
+  const school = await service.updateSchool(req.school.id, req.body, req.user);
   res.json({ school });
 }
 
 async function rotateApiKey(req, res) {
-  const apiKey = service.rotateApiKey(req.school.id, req.user);
+  const apiKey = await service.rotateApiKey(req.school.id, req.user);
   res.json({ apiKey });
 }
 
 async function upsertConfig(req, res) {
-  const configs = service.upsertPaymentConfig(req.school.id, req.body, req.user);
+  const configs = await service.upsertPaymentConfig(req.school.id, req.body, req.user);
   res.status(201).json({ configs });
 }
 
 async function listConfigs(req, res) {
-  res.json({ configs: service.listPaymentConfigs(req.school.id) });
+  res.json({ configs: await service.listPaymentConfigs(req.school.id) });
 }
 
 module.exports = { register, me, update, rotateApiKey, upsertConfig, listConfigs };
