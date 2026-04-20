@@ -7,9 +7,9 @@ function notFound(_req, res) {
   res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Resource not found' } });
 }
 
-// Expose raw error details when DEBUG_ERRORS is set — useful for diagnosing
-// deploy/DB issues on hosted environments where log access is awkward.
-const DEBUG_ERRORS = process.env.DEBUG_ERRORS === '1' || process.env.DEBUG_ERRORS === 'true';
+// Expose raw error details in responses unless DEBUG_ERRORS is explicitly '0'.
+// Temporary — flip the default back to opt-in once the Vercel deploy is healthy.
+const DEBUG_ERRORS = process.env.DEBUG_ERRORS !== '0' && process.env.DEBUG_ERRORS !== 'false';
 
 // eslint-disable-next-line no-unused-vars
 function errorHandler(err, req, res, _next) {
