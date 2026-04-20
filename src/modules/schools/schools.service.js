@@ -166,11 +166,18 @@ function sanitize(school) {
   return { ...rest, is_active: !!school.is_active };
 }
 
+async function deleteSchool(schoolId, actor, ip) {
+  const res = await db.query('DELETE FROM schools WHERE id = $1', [schoolId]);
+  if (!res.rowCount) throw new NotFoundError('School not found');
+  writeAudit({ schoolId, userId: actor && actor.id, action: 'school.delete', entity: 'school', entityId: schoolId, ip });
+}
+
 module.exports = {
   registerSchool,
   getSchool,
   updateSchool,
   rotateApiKey,
+  deleteSchool,
   upsertPaymentConfig,
   listPaymentConfigs
 };

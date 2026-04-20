@@ -20,4 +20,7 @@ router.post('/me/api-key/rotate', authJwt, requireRole('admin'), asyncHandler(ct
 router.get('/me/payment-configs', authJwt, requireRole('admin', 'bursar'), asyncHandler(ctrl.listConfigs));
 router.put('/me/payment-configs', authJwt, requireRole('admin'), asyncHandler(ctrl.upsertConfig));
 
+// Irreversible: deletes the school and every row that cascades from it.
+router.delete('/me', authJwt, requireRole('admin'), asyncHandler(ctrl.remove));
+
 module.exports = router;

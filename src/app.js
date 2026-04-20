@@ -51,40 +51,19 @@ app.use(express.urlencoded({ extended: true }));
 
 app.get('/health', (_req, res) => res.json({ ok: true, uptime: process.uptime() }));
 
-// Temporary diagnostic endpoint — reports DB connectivity + schema presence.
-// Remove once deployment is healthy.
-app.get('/api/_diag', async (_req, res) => {
+// Readiness probe with a DB ping. Surfaces the real error only when DEBUG_ERRORS=1.
+app.get('/api/_status', async (_req, res) => {
   const { db } = require('./core/database');
-  const dbUrl = process.env.DATABASE_URL || '';
-  const host = (dbUrl.match(/@([^:/?]+)/) || [])[1] || null;
-  const port = (dbUrl.match(/:(\d+)\//) || [])[1] || null;
-  const result = {
-    env: {
-      NODE_ENV: process.env.NODE_ENV,
-      has_DATABASE_URL: !!process.env.DATABASE_URL,
-      has_ENCRYPTION_KEY: !!process.env.ENCRYPTION_KEY,
-      has_JWT_SECRET: !!process.env.JWT_SECRET,
-      db_host: host,
-      db_port: port
-    }
-  };
   try {
-    const r = await db.query('SELECT 1 AS ok');
-    result.query = { ok: true, rows: r.rows };
-    const tables = await db.query(
-      "SELECT table_name FROM information_schema.tables WHERE table_schema = 'public' ORDER BY table_name"
-    );
-    result.tables = tables.rows.map((t) => t.table_name);
-    res.json(result);
+    await db.query('SELECT 1');
+    res.json({ ok: true, db: 'ok', uptime: process.uptime() });
   } catch (err) {
-    result.query = {
+    const debug = process.env.DEBUG_ERRORS === '1' || process.env.DEBUG_ERRORS === 'true';
+    res.status(503).json({
       ok: false,
-      name: err && err.name,
-      code: err && err.code,
-      message: err && err.message,
-      stack: err && err.stack && err.stack.split('\n').slice(0, 10)
-    };
-    res.status(500).json(result);
+      db: 'error',
+      error: debug ? { name: err.name, code: err.code, message: err.message } : 'unavailable'
+    });
   }
 });
 

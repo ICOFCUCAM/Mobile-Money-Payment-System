@@ -30,4 +30,9 @@ async function listConfigs(req, res) {
   res.json({ configs: await service.listPaymentConfigs(req.school.id) });
 }
 
-module.exports = { register, me, update, rotateApiKey, upsertConfig, listConfigs };
+async function remove(req, res) {
+  await service.deleteSchool(req.school.id, req.user, req.ip);
+  res.status(204).end();
+}
+
+module.exports = { register, me, update, rotateApiKey, upsertConfig, listConfigs, remove };

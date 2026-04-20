@@ -23,4 +23,27 @@ async function listUsers(req, res) {
   res.json({ users: await service.listUsers(req.school.id) });
 }
 
-module.exports = { login, me, createUser, listUsers };
+async function requestPasswordReset(req, res) {
+  const out = await service.requestPasswordReset(req.body, req.ip);
+  res.json(out);
+}
+
+async function resetPassword(req, res) {
+  const out = await service.resetPassword(req.body, req.ip);
+  res.json(out);
+}
+
+async function changePassword(req, res) {
+  const out = await service.changePassword(req.user.id, req.body, req.ip);
+  res.json(out);
+}
+
+module.exports = {
+  login,
+  me,
+  createUser,
+  listUsers,
+  requestPasswordReset,
+  resetPassword,
+  changePassword
+};

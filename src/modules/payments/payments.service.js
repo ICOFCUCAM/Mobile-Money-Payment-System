@@ -240,10 +240,112 @@ async function summary(schoolId) {
   };
 }
 
+/**
+ * Reverse a previously-successful transaction. Debits the student's balance
+ * by the original amount and marks the transaction as `reversed`. Idempotent —
+ * re-reversing a reversed transaction is a no-op.
+ */
+async function reverseTransaction(school, transactionId, { reason } = {}, actor, ip) {
+  const txRes = await db.query(
+    'SELECT * FROM transactions WHERE school_id = $1 AND id = $2',
+    [school.id, transactionId]
+  );
+  const tx = txRes.rows[0];
+  if (!tx) throw new NotFoundError('Transaction not found');
+  if (tx.status === 'reversed') return tx;
+  if (tx.status !== 'success') {
+    throw new ValidationError(`Only successful transactions can be reversed (got "${tx.status}")`);
+  }
+
+  await db.withTransaction(async (client) => {
+    await client.query(
+      `UPDATE transactions SET status = 'reversed', updated_at = NOW() WHERE id = $1`,
+      [tx.id]
+    );
+    if (tx.student_id) {
+      await studentsService.creditBalance(school.id, tx.student_id, -Number(tx.amount), client);
+    }
+  });
+
+  writeAudit({
+    schoolId: school.id,
+    userId: actor && actor.id,
+    action: 'payment.reversed',
+    entity: 'transaction',
+    entityId: tx.id,
+    metadata: { amount: tx.amount, reason: reason || null },
+    ip
+  });
+
+  logger.info(`Transaction reversed: ${tx.provider}/${tx.external_id} school=${school.slug} amount=${tx.amount}`);
+
+  return getTransaction(school.id, tx.id);
+}
+
+/**
+ * Reconcile pending transactions by re-polling each provider for status.
+ * Intended to be called by a cron job every few minutes. Returns counts.
+ */
+async function reconcilePending(school, { limit = 50 } = {}) {
+  const pending = await db.query(
+    `SELECT * FROM transactions
+       WHERE school_id = $1 AND status = 'pending'
+       ORDER BY created_at ASC
+       LIMIT $2`,
+    [school.id, Math.min(Number(limit) || 50, 500)]
+  );
+
+  const counts = { checked: pending.rows.length, success: 0, failed: 0, stillPending: 0, errored: 0 };
+
+  for (const tx of pending.rows) {
+    try {
+      const provider = await getProviderForSchool(school.id, tx.provider);
+      const v = await provider.verifyTransaction(tx.external_id);
+      if (v.ok && v.status === 'success') {
+        const amount = v.amount != null ? Number(v.amount) : Number(tx.amount);
+        await db.withTransaction(async (client) => {
+          await client.query(
+            `UPDATE transactions SET status = 'success', amount = $1, verified_at = NOW(),
+                                     raw_response = $2, updated_at = NOW()
+             WHERE id = $3`,
+            [amount, JSON.stringify(v.raw || {}), tx.id]
+          );
+          if (tx.student_id) {
+            await studentsService.creditBalance(school.id, tx.student_id, amount, client);
+          }
+        });
+        counts.success += 1;
+      } else if (v.status === 'failed') {
+        await db.query(
+          `UPDATE transactions SET status = 'failed', raw_response = $1, updated_at = NOW()
+           WHERE id = $2`,
+          [JSON.stringify(v.raw || {}), tx.id]
+        );
+        counts.failed += 1;
+      } else {
+        counts.stillPending += 1;
+      }
+    } catch (err) {
+      logger.warn(`Reconciliation failed for tx ${tx.id}`, err.message);
+      counts.errored += 1;
+    }
+  }
+
+  writeAudit({
+    schoolId: school.id,
+    action: 'payment.reconcile',
+    metadata: counts
+  });
+
+  return counts;
+}
+
 module.exports = {
   submitTransaction,
   recordWebhookTransaction,
   getTransaction,
   listTransactions,
-  summary
+  summary,
+  reverseTransaction,
+  reconcilePending
 };
