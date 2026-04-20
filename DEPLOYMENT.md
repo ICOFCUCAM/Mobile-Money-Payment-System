@@ -6,35 +6,56 @@ This project is a stateless Node.js/Express server backed by Postgres. It deploy
 - **A Docker container** on any platform (Render, Fly, Railway, AWS ECS, Kubernetes).
 - **A plain Node.js process** (`npm start`) behind your own reverse proxy.
 
-## Quick Vercel deploy
+## Deploy from Git (recommended)
 
-Prerequisites: a Neon Postgres database (free tier) and — optionally — an Upstash Redis for Redis-backed rate limiting.
+Once set up, every push to `main` auto-deploys to production, and every push to any other branch or PR gets a preview URL — no laptop CLI required.
+
+### One-time setup
+
+**1. Provision infra**
+- **Neon** Postgres (free tier): <https://console.neon.tech/> — copy the Direct Connection URL, append `?sslmode=require`.
+- **Upstash** Redis (optional, for multi-instance rate limits): <https://console.upstash.com/>.
+
+**2. Create the Vercel project + token (on your laptop, one time)**
+```bash
+npm install -g vercel
+vercel login
+vercel link        # pick "create new project" in this repo, accept defaults
+cat .vercel/project.json   # note orgId + projectId
+```
+Then create a token at <https://vercel.com/account/tokens>.
+
+**3. Set the Vercel env vars** (for both `production` and `preview` environments)
+```bash
+vercel env add DATABASE_URL production        # Neon URL with ?sslmode=require
+vercel env add DATABASE_URL preview
+vercel env add ENCRYPTION_KEY production      # 64-char hex (see below)
+vercel env add ENCRYPTION_KEY preview
+vercel env add JWT_SECRET production
+vercel env add JWT_SECRET preview
+# Optional:
+vercel env add UPSTASH_REDIS_REST_URL production
+vercel env add UPSTASH_REDIS_REST_TOKEN production
+```
+
+**4. Add GitHub repository secrets**
+In GitHub → Settings → Secrets and variables → Actions → New repository secret:
+- `VERCEL_TOKEN` — the token from step 2
+- `VERCEL_ORG_ID` — `orgId` from `.vercel/project.json`
+- `VERCEL_PROJECT_ID` — `projectId` from `.vercel/project.json`
+
+**5. Initial schema**
+```bash
+DATABASE_URL="<neon-url>" npm run migrate
+```
+
+**6. Push to trigger a deploy**
+Pushing to `main` hits `.github/workflows/deploy-production.yml` and goes live. Any other branch or PR triggers `deploy-preview.yml` which comments the preview URL on the PR.
+
+### Manual CLI deploy (fallback)
 
 ```bash
-# 1. Clone + install
-git clone <your-fork>
-cd mobile-money-payment-system
-npm ci
-
-# 2. Provision deps
-#    - Neon:    https://console.neon.tech/  (copy the "Direct connection" URL)
-#    - Upstash: https://console.upstash.com/ (Redis REST URL + token)
-
-# 3. Authenticate + link + set env
-npx vercel login
-npx vercel link                     # creates .vercel/project.json
-
-npx vercel env add DATABASE_URL production    # paste Neon URL with ?sslmode=require
-npx vercel env add ENCRYPTION_KEY production  # 64-char hex (see below)
-npx vercel env add JWT_SECRET production      # long random string
-npx vercel env add UPSTASH_REDIS_REST_URL production   # (optional)
-npx vercel env add UPSTASH_REDIS_REST_TOKEN production # (optional)
-
-# 4. Initial schema
-DATABASE_URL="<neon-url>" npm run migrate
-
-# 5. Ship
-npx vercel --prod
+vercel --prod
 ```
 
 Generate a production-strength encryption key:

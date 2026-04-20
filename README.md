@@ -29,20 +29,21 @@ Generate secrets:
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
 
-## Deploy to Vercel
+## Deploy to Vercel (from Git)
 
-Short version:
+After a one-time setup, **every push to `main` auto-deploys to production** and every feature branch / PR gets a preview URL, via GitHub Actions.
 
-```bash
-npx vercel login && npx vercel link
-npx vercel env add DATABASE_URL production     # Neon postgres URL (?sslmode=require)
-npx vercel env add ENCRYPTION_KEY production   # 64-char hex
-npx vercel env add JWT_SECRET production       # long random
-DATABASE_URL="<neon-url>" npm run migrate       # one-off schema create
-npx vercel --prod
-```
+One-time:
 
-Full guide + Upstash/Redis + Docker options: see [`DEPLOYMENT.md`](./DEPLOYMENT.md).
+1. Create a Neon Postgres DB; run `DATABASE_URL="<neon>" npm run migrate`.
+2. `npm i -g vercel && vercel login && vercel link` — note `orgId` + `projectId` from `.vercel/project.json`.
+3. Set `DATABASE_URL`, `ENCRYPTION_KEY`, `JWT_SECRET` in Vercel (production + preview environments).
+4. Add three GitHub repo secrets: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`.
+5. Push.
+
+Workflows: [`deploy-production.yml`](./.github/workflows/deploy-production.yml) + [`deploy-preview.yml`](./.github/workflows/deploy-preview.yml).
+
+Full guide (Upstash Redis, Docker, checklist): [`DEPLOYMENT.md`](./DEPLOYMENT.md).
 API reference: [`openapi.yaml`](./openapi.yaml).
 
 ## Architecture
