@@ -123,14 +123,21 @@ CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at DESC);
 function buildPool() {
   const connectionString = config.database.url;
   if (!connectionString) throw new Error('DATABASE_URL is required');
-  // Neon/managed Postgres require TLS. Local disables with ?sslmode=disable.
-  const ssl = /sslmode=disable/.test(connectionString)
-    ? false
-    : config.isProd || /neon\.tech|supabase|vercel/.test(connectionString)
-    ? { rejectUnauthorized: false }
-    : false;
+
+  // Parse the URL ourselves so we can set TLS options explicitly.
+  // Passing a `connectionString` to pg can let URL params (like sslmode=require)
+  // override the ssl option at connect time, which breaks hosts using self-signed
+  // cert chains (Supabase, Neon pooler).
+  const url = new URL(connectionString);
+  const sslDisabled = /sslmode=disable/.test(connectionString);
+  const ssl = sslDisabled ? false : { rejectUnauthorized: false };
+
   return new Pool({
-    connectionString,
+    host: url.hostname,
+    port: url.port ? parseInt(url.port, 10) : 5432,
+    user: decodeURIComponent(url.username),
+    password: decodeURIComponent(url.password),
+    database: url.pathname.replace(/^\//, '') || 'postgres',
     ssl,
     max: parseInt(process.env.DATABASE_POOL_MAX || (config.isProd ? '5' : '10'), 10),
     idleTimeoutMillis: 30_000,
