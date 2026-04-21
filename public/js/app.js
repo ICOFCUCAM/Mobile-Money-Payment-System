@@ -256,8 +256,20 @@
     await loadMe();
     const [txList, configs] = await Promise.all([Api.get('/payments?limit=100'), Api.get('/schools/me/payment-configs')]);
     const providers = (configs.configs || []).filter((c) => c.is_active).map((c) => c.provider);
+    const isAdmin = current.user && current.user.role === 'admin';
     const rows = (txList.transactions || []).map((t) => `
-      <tr><td>${escape(t.created_at)}</td><td>${escape(t.provider)}</td><td>${escape(t.external_id)}</td><td>${moneyFmt(t.amount, t.currency)}</td><td>${statusBadge(t.status)}</td></tr>`).join('');
+      <tr>
+        <td>${escape(t.created_at)}</td>
+        <td>${escape(t.provider)}</td>
+        <td>${escape(t.external_id)}</td>
+        <td>${moneyFmt(t.amount, t.currency)}</td>
+        <td>${statusBadge(t.status)}</td>
+        <td style="text-align:right;">${
+          isAdmin && t.status === 'success'
+            ? `<button class="secondary small reverse" data-id="${escape(t.id)}" data-ref="${escape(t.external_id)}" data-amount="${escape(t.amount)}" data-currency="${escape(t.currency)}">Reverse</button>`
+            : ''
+        }</td>
+      </tr>`).join('');
     const body = `
       <div class="card">
         <h2>Submit payment for verification</h2>
@@ -272,12 +284,11 @@
           <div class="field"><label>Transaction ID</label><input name="externalId" required></div>
           <div class="field" style="flex:0;"><label>&nbsp;</label><button type="submit">Verify</button></div>
         </form>
-        <div id="err"></div>
       </div>
       <div class="card">
         <h2>Transactions</h2>
-        <table><thead><tr><th>Date</th><th>Provider</th><th>Ref</th><th>Amount</th><th>Status</th></tr></thead>
-          <tbody>${rows || '<tr><td colspan=5 class="muted">No transactions yet.</td></tr>'}</tbody></table>
+        <table><thead><tr><th>Date</th><th>Provider</th><th>Ref</th><th>Amount</th><th>Status</th><th></th></tr></thead>
+          <tbody>${rows || '<tr><td colspan=6 class="muted">No transactions yet.</td></tr>'}</tbody></table>
       </div>`;
     render(shell('payments', body));
     document.getElementById('logout').onclick = logout;
@@ -291,6 +302,25 @@
       } catch (err) {
         toast(err.message, 'error', { title: 'Payment verification failed' });
       }
+    });
+    document.querySelectorAll('button.reverse').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const { id, ref, amount, currency } = btn.dataset;
+        const ok = await confirmDialog({
+          title: 'Reverse transaction?',
+          body: `This will debit the student's balance by <b>${escape(moneyFmt(amount, currency))}</b> and mark transaction <span class="mono">${escape(ref)}</span> as reversed. This cannot be undone from the UI.`,
+          confirmText: 'Reverse',
+          danger: true
+        });
+        if (!ok) return;
+        try {
+          await Api.post(`/payments/${encodeURIComponent(id)}/reverse`, { reason: 'Reversed from dashboard' });
+          toast(`Transaction ${ref} reversed`, 'success');
+          location.reload();
+        } catch (err) {
+          toast(err.message, 'error', { title: 'Reversal failed' });
+        }
+      });
     });
   });
 
