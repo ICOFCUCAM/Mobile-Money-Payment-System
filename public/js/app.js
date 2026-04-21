@@ -40,7 +40,36 @@
     catch (err) { toast(err.message || 'Unexpected error', 'error', { title: errorTitle }); }
   }
 
-  window.__ui = { toast, tryAction };
+  /**
+   * Show a blocking confirmation modal. Resolves to true if the user confirmed,
+   * false otherwise. Useful for destructive actions (delete, reverse, rotate).
+   */
+  function confirmDialog({ title = 'Are you sure?', body = '', confirmText = 'Confirm', danger = false } = {}) {
+    return new Promise((resolve) => {
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-overlay';
+      overlay.innerHTML = `
+        <div class="modal" role="dialog" aria-modal="true">
+          <h2>${escape(title)}</h2>
+          <div style="margin-bottom:16px;">${body}</div>
+          <div class="row" style="justify-content:flex-end;">
+            <button class="secondary shrink" data-action="cancel">Cancel</button>
+            <button class="${danger ? 'danger' : ''} shrink" data-action="confirm">${escape(confirmText)}</button>
+          </div>
+        </div>`;
+      const done = (value) => { overlay.remove(); resolve(value); };
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) done(false);
+        const action = e.target.getAttribute && e.target.getAttribute('data-action');
+        if (action === 'cancel') done(false);
+        if (action === 'confirm') done(true);
+      });
+      document.body.appendChild(overlay);
+      overlay.querySelector('[data-action="confirm"]').focus();
+    });
+  }
+
+  window.__ui = { toast, tryAction, confirmDialog };
 
   function moneyFmt(amount, currency) {
     return `${Number(amount || 0).toLocaleString()} ${currency || ''}`.trim();
@@ -142,6 +171,7 @@
         <a href="#/payments" class="${active==='payments'?'active':''}">Payments</a>
         <a href="#/configs" class="${active==='configs'?'active':''}">Providers</a>
         <a href="#/subscription" class="${active==='subscription'?'active':''}">Subscription</a>
+        <a href="#/settings" class="${active==='settings'?'active':''}">Settings</a>
       </div>
       ${body}`;
   }
@@ -342,6 +372,106 @@
           toast(err.message, 'error', { title: 'Plan change failed' });
         }
       });
+    });
+  });
+
+  route('#/settings', async () => {
+    if (!protect()) return;
+    await loadMe();
+    const school = (await Api.get('/schools/me')).school;
+    const body = `
+      <div class="card">
+        <h2>Profile</h2>
+        <div class="row">
+          <div><label>Email</label><input value="${escape(current.user.email)}" disabled></div>
+          <div><label>Role</label><input value="${escape(current.user.role)}" disabled></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>School</h2>
+        <div class="row">
+          <div><label>Name</label><input value="${escape(school.name)}" disabled></div>
+          <div><label>Slug</label><input value="${escape(school.slug)}" disabled></div>
+          <div><label>Plan</label><input value="${escape(school.subscription_plan)}" disabled></div>
+        </div>
+        <div class="muted">Webhook URL: <span class="mono">${location.origin}/webhooks/&lt;PROVIDER&gt;/${escape(school.slug)}</span></div>
+      </div>
+
+      <div class="card">
+        <h2>Change password</h2>
+        <form id="pwf">
+          <div class="row">
+            <div><label>Current password</label><input name="currentPassword" type="password" required></div>
+            <div><label>New password (min 8)</label><input name="newPassword" type="password" minlength="8" required></div>
+            <div class="shrink"><label>&nbsp;</label><button type="submit">Update</button></div>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>API key</h2>
+        <p class="muted">The plaintext key is only shown at creation or rotation. Only its SHA-256 hash is stored.</p>
+        <button class="secondary" id="rotate">Rotate API key</button>
+        <div id="newkey" style="margin-top:12px;"></div>
+      </div>
+
+      <div class="card" style="border-color: var(--danger);">
+        <h2 style="color: var(--danger);">Danger zone</h2>
+        <p class="muted">Deleting the school is permanent. It cascades: students, transactions, provider configs, users, audit log — all gone.</p>
+        <button class="danger" id="del">Delete this school</button>
+      </div>`;
+    render(shell('settings', body));
+    document.getElementById('logout').onclick = logout;
+
+    document.getElementById('pwf').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(e.target).entries());
+      try {
+        await Api.post('/auth/change-password', data);
+        toast('Password updated', 'success');
+        e.target.reset();
+      } catch (err) {
+        toast(err.message, 'error', { title: 'Password change failed' });
+      }
+    });
+
+    document.getElementById('rotate').addEventListener('click', async () => {
+      const ok = await confirmDialog({
+        title: 'Rotate API key?',
+        body: 'The current key will stop working immediately. Save the new one — it is shown only once.',
+        confirmText: 'Rotate',
+        danger: true
+      });
+      if (!ok) return;
+      try {
+        const r = await Api.post('/schools/me/api-key/rotate');
+        document.getElementById('newkey').innerHTML = `
+          <div class="alert success">New API key (shown once):</div>
+          <pre>${escape(r.apiKey)}</pre>`;
+        toast('API key rotated', 'success');
+      } catch (err) {
+        toast(err.message, 'error', { title: 'Rotation failed' });
+      }
+    });
+
+    document.getElementById('del').addEventListener('click', async () => {
+      const ok = await confirmDialog({
+        title: 'Delete this school?',
+        body: `This removes <b>${escape(school.name)}</b> and all associated students, transactions, users and provider configs. This cannot be undone.`,
+        confirmText: `Delete ${school.slug}`,
+        danger: true
+      });
+      if (!ok) return;
+      try {
+        await Api.del('/schools/me');
+        toast('School deleted', 'success');
+        Api.setToken(null);
+        current = {};
+        navigate('#/register');
+      } catch (err) {
+        toast(err.message, 'error', { title: 'Deletion failed' });
+      }
     });
   });
 
