@@ -43,9 +43,6 @@ const HomeInner: React.FC = () => {
           className="absolute inset-0 w-full h-full object-cover"
           onError={(e) => { (e.currentTarget.style.display = 'none'); }}
         />
-        {/* Very light bottom fade so the rest of the page connects smoothly —
-            the photo itself stays sharp and un-blurred. */}
-        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-b from-transparent to-white pointer-events-none" />
 
         <div className="relative max-w-7xl mx-auto px-6 py-20 lg:py-28 grid lg:grid-cols-[1.1fr_1fr] gap-10 items-center">
           {/* Headline card — frosted glass so the photo still shows through softly */}
@@ -76,9 +73,11 @@ const HomeInner: React.FC = () => {
             </div>
           </div>
 
-          <Card className="p-0 shadow-2xl border-slate-100 overflow-hidden relative">
-            <div className="absolute -top-3 -right-3 w-24 h-24 rounded-full bg-blue-500/10 blur-2xl pointer-events-none" />
-            <div className="flex border-b border-slate-100 bg-slate-50/50">
+          {/* Rotating dashboard widget — transparent container so it floats directly
+              on the photo with no visible box. Tab bar and inner content read against
+              the photograph; the cell/row cards inside keep their own soft colors. */}
+          <div className="relative">
+            <div className="flex border-b border-white/30">
               {([
                 { id: 'overview', label: 'Overview', icon: Activity },
                 { id: 'verify',   label: 'Verify Payment', icon: Zap },
@@ -89,8 +88,8 @@ const HomeInner: React.FC = () => {
                   <button
                     key={t.id}
                     onClick={() => pickTab(t.id)}
-                    className={`relative flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-medium transition-colors ${
-                      active ? 'text-blue-700' : 'text-slate-500 hover:text-slate-900'
+                    className={`relative flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 text-xs font-semibold transition-colors drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)] ${
+                      active ? 'text-white' : 'text-white/80 hover:text-white'
                     }`}
                   >
                     <t.icon className="w-3.5 h-3.5" />
@@ -98,7 +97,7 @@ const HomeInner: React.FC = () => {
                     {active && (
                       <motion.span
                         layoutId="heroTabBar"
-                        className="absolute inset-x-3 bottom-0 h-0.5 bg-blue-600 rounded-full"
+                        className="absolute inset-x-3 bottom-0 h-0.5 bg-blue-400 rounded-full"
                         transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                       />
                     )}
@@ -109,48 +108,48 @@ const HomeInner: React.FC = () => {
             <div className="p-6 min-h-[380px]">
               <AnimatePresence mode="wait">
                 {heroTab === 'overview' && (
-                  <motion.div key="overview" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25 }}>
+                  <motion.div key="overview" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25 }} className="drop-shadow-[0_2px_2px_rgba(0,0,0,0.6)]">
                     <div className="flex items-start justify-between mb-5">
                       <div>
-                        <div className="text-xs text-slate-500">Total Revenue</div>
-                        <div className="font-display text-3xl font-bold mt-1 tracking-tight">1,335,000 XAF</div>
+                        <div className="text-xs text-white/80">Total Revenue</div>
+                        <div className="font-display text-3xl font-bold mt-1 tracking-tight text-white">1,335,000 XAF</div>
                       </div>
-                      <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-50">
+                      <Badge className="bg-emerald-500/90 text-white border-emerald-300 hover:bg-emerald-500/90">
                         <TrendingUp className="w-3 h-3 mr-1" /> +24.5%
                       </Badge>
                     </div>
                     <div className="grid grid-cols-3 gap-2.5 mb-5">
-                      <div className="p-3 rounded-lg bg-yellow-50 border border-yellow-100">
-                        <div className="text-[11px] text-yellow-700 font-medium">MTN MoMo</div>
-                        <div className="font-bold mt-0.5">540K</div>
+                      <div className="p-3 rounded-lg bg-yellow-400/90 border border-yellow-300 shadow">
+                        <div className="text-[11px] text-yellow-900 font-semibold">MTN MoMo</div>
+                        <div className="font-bold mt-0.5 text-yellow-950">540K</div>
                       </div>
-                      <div className="p-3 rounded-lg bg-orange-50 border border-orange-100">
-                        <div className="text-[11px] text-orange-700 font-medium">Orange</div>
-                        <div className="font-bold mt-0.5">660K</div>
+                      <div className="p-3 rounded-lg bg-orange-400/90 border border-orange-300 shadow">
+                        <div className="text-[11px] text-orange-900 font-semibold">Orange</div>
+                        <div className="font-bold mt-0.5 text-orange-950">660K</div>
                       </div>
-                      <div className="p-3 rounded-lg bg-slate-50 border border-slate-100">
-                        <div className="text-[11px] text-slate-600 font-medium">Pending</div>
-                        <div className="font-bold mt-0.5">80K</div>
+                      <div className="p-3 rounded-lg bg-white/90 border border-white shadow">
+                        <div className="text-[11px] text-slate-600 font-semibold">Pending</div>
+                        <div className="font-bold mt-0.5 text-slate-900">80K</div>
                       </div>
                     </div>
                     <div className="space-y-3">
                       {[
-                        { initial: 'A', grad: 'from-blue-400 to-indigo-500',    name: 'Amina Nkomo',   id: 'STU001', amount: '45,000 XAF',  status: 'verified', statusClass: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-                        { initial: 'K', grad: 'from-emerald-400 to-teal-500',   name: 'Kwame Mensah',  id: 'STU002', amount: '150,000 XAF', status: 'verified', statusClass: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-                        { initial: 'Z', grad: 'from-purple-400 to-pink-500',    name: 'Zainab Hassan', id: 'STU003', amount: '30,000 XAF',  status: 'pending',  statusClass: 'bg-amber-50 text-amber-700 border-amber-200' },
+                        { initial: 'A', grad: 'from-blue-400 to-indigo-500',    name: 'Amina Nkomo',   id: 'STU001', amount: '45,000 XAF',  status: 'verified', statusClass: 'bg-emerald-500/90 text-white border-emerald-300' },
+                        { initial: 'K', grad: 'from-emerald-400 to-teal-500',   name: 'Kwame Mensah',  id: 'STU002', amount: '150,000 XAF', status: 'verified', statusClass: 'bg-emerald-500/90 text-white border-emerald-300' },
+                        { initial: 'Z', grad: 'from-purple-400 to-pink-500',    name: 'Zainab Hassan', id: 'STU003', amount: '30,000 XAF',  status: 'pending',  statusClass: 'bg-amber-500/90 text-white border-amber-300' },
                       ].map((r) => (
                         <div key={r.id} className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <div className={`w-9 h-9 rounded-full bg-gradient-to-br ${r.grad} flex items-center justify-center text-white font-bold text-sm`}>
+                            <div className={`w-9 h-9 rounded-full bg-gradient-to-br ${r.grad} flex items-center justify-center text-white font-bold text-sm shadow`}>
                               {r.initial}
                             </div>
                             <div>
-                              <div className="font-medium text-sm">{r.name}</div>
-                              <div className="text-xs text-slate-500">{r.id}</div>
+                              <div className="font-medium text-sm text-white">{r.name}</div>
+                              <div className="text-xs text-white/70">{r.id}</div>
                             </div>
                           </div>
                           <div className="text-right">
-                            <div className="font-semibold text-sm">{r.amount}</div>
+                            <div className="font-semibold text-sm text-white">{r.amount}</div>
                             <Badge variant="outline" className={`${r.statusClass} text-[10px] mt-1 hover:bg-inherit`}>{r.status}</Badge>
                           </div>
                         </div>
@@ -160,43 +159,43 @@ const HomeInner: React.FC = () => {
                 )}
 
                 {heroTab === 'verify' && (
-                  <motion.div key="verify" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25 }}>
-                    <div className="text-xs text-slate-500 mb-1">Verify payment</div>
-                    <div className="font-display text-xl font-bold mb-5">Submit a mobile-money receipt</div>
+                  <motion.div key="verify" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25 }} className="drop-shadow-[0_2px_2px_rgba(0,0,0,0.6)]">
+                    <div className="text-xs text-white/80 mb-1">Verify payment</div>
+                    <div className="font-display text-xl font-bold mb-5 text-white">Submit a mobile-money receipt</div>
                     <div className="space-y-3">
                       <div>
-                        <div className="text-[11px] text-slate-500 mb-1">Student</div>
-                        <div className="flex items-center gap-2 p-2.5 rounded-lg border border-slate-200 bg-slate-50">
+                        <div className="text-[11px] text-white/80 mb-1">Student</div>
+                        <div className="flex items-center gap-2 p-2.5 rounded-lg border border-white/30 bg-white/90">
                           <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white font-bold text-xs">A</div>
                           <div className="flex-1">
-                            <div className="text-sm font-medium">Amina Nkomo</div>
-                            <div className="text-[11px] text-slate-500">STU001 · Grade 10</div>
+                            <div className="text-sm font-medium text-slate-900">Amina Nkomo</div>
+                            <div className="text-[11px] text-slate-600">STU001 · Grade 10</div>
                           </div>
                         </div>
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <div className="text-[11px] text-slate-500 mb-1">Provider</div>
-                          <div className="p-2.5 rounded-lg border border-slate-200 bg-white text-sm flex items-center gap-2">
+                          <div className="text-[11px] text-white/80 mb-1">Provider</div>
+                          <div className="p-2.5 rounded-lg border border-white/30 bg-white/90 text-sm flex items-center gap-2 text-slate-900">
                             <span className="w-3 h-3 rounded-full bg-yellow-500" /> MTN
                           </div>
                         </div>
                         <div>
-                          <div className="text-[11px] text-slate-500 mb-1">Reference</div>
-                          <div className="p-2.5 rounded-lg border border-slate-200 bg-white text-sm font-mono">MoMo-9F3A21</div>
+                          <div className="text-[11px] text-white/80 mb-1">Reference</div>
+                          <div className="p-2.5 rounded-lg border border-white/30 bg-white/90 text-sm font-mono text-slate-900">MoMo-9F3A21</div>
                         </div>
                       </div>
-                      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.4 }} className="p-3.5 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-emerald-500 flex items-center justify-center text-white">
+                      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.4 }} className="p-3.5 rounded-lg bg-emerald-500/90 border border-emerald-300 flex items-center gap-3 shadow">
+                        <div className="w-9 h-9 rounded-full bg-white flex items-center justify-center text-emerald-600">
                           <CheckCircle2 className="w-5 h-5" />
                         </div>
                         <div className="flex-1">
-                          <div className="text-sm font-semibold text-emerald-900">Verified &amp; credited</div>
-                          <div className="text-xs text-emerald-800">Amina's balance: 45,000 XAF → <b>90,000 XAF</b></div>
+                          <div className="text-sm font-semibold text-white">Verified &amp; credited</div>
+                          <div className="text-xs text-white/95">Amina's balance: 45,000 XAF → <b>90,000 XAF</b></div>
                         </div>
-                        <Badge className="bg-emerald-600 hover:bg-emerald-600 text-[10px]">+45,000</Badge>
+                        <Badge className="bg-white text-emerald-700 hover:bg-white text-[10px]">+45,000</Badge>
                       </motion.div>
-                      <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
+                      <div className="text-[11px] text-white/80 flex items-center gap-1.5">
                         <Lock className="w-3 h-3" /> Replay-protected: UNIQUE (school, provider, external_id)
                       </div>
                     </div>
@@ -204,32 +203,32 @@ const HomeInner: React.FC = () => {
                 )}
 
                 {heroTab === 'audit' && (
-                  <motion.div key="audit" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25 }}>
+                  <motion.div key="audit" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25 }} className="drop-shadow-[0_2px_2px_rgba(0,0,0,0.6)]">
                     <div className="flex items-start justify-between mb-5">
                       <div>
-                        <div className="text-xs text-slate-500">Audit Log</div>
-                        <div className="font-display text-xl font-bold mt-0.5">Recent activity</div>
+                        <div className="text-xs text-white/80">Audit Log</div>
+                        <div className="font-display text-xl font-bold mt-0.5 text-white">Recent activity</div>
                       </div>
-                      <Badge variant="outline" className="text-[10px]">Live</Badge>
+                      <Badge variant="outline" className="text-[10px] bg-white/10 text-white border-white/30">Live</Badge>
                     </div>
                     <ul className="space-y-3">
                       {[
-                        { icon: CheckCircle2, color: 'text-emerald-600 bg-emerald-50', title: 'Payment verified', body: 'MoMo-9F3A21 · 45,000 XAF · Amina Nkomo', time: 'just now' },
-                        { icon: UserPlus,     color: 'text-blue-600 bg-blue-50',       title: 'Student added',    body: 'STU018 · Kofi Asante · Grade 11',      time: '2m ago' },
-                        { icon: Undo2,        color: 'text-red-600 bg-red-50',         title: 'Payment reversed', body: 'MoMo-88EF02 · −30,000 XAF · admin@…',  time: '14m ago' },
-                        { icon: KeyRound,     color: 'text-amber-600 bg-amber-50',     title: 'API key rotated',  body: 'by james.chama@quin-chama.edu',         time: '1h ago' },
-                        { icon: Webhook,      color: 'text-indigo-600 bg-indigo-50',   title: 'Webhook received', body: 'MTN → 150,000 XAF · HMAC verified',    time: '1h ago' },
+                        { icon: CheckCircle2, color: 'text-emerald-600 bg-white', title: 'Payment verified', body: 'MoMo-9F3A21 · 45,000 XAF · Amina Nkomo', time: 'just now' },
+                        { icon: UserPlus,     color: 'text-blue-600 bg-white',    title: 'Student added',    body: 'STU018 · Kofi Asante · Grade 11',      time: '2m ago' },
+                        { icon: Undo2,        color: 'text-red-600 bg-white',     title: 'Payment reversed', body: 'MoMo-88EF02 · −30,000 XAF',            time: '14m ago' },
+                        { icon: KeyRound,     color: 'text-amber-600 bg-white',   title: 'API key rotated',  body: 'by an admin account',                   time: '1h ago' },
+                        { icon: Webhook,      color: 'text-indigo-600 bg-white',  title: 'Webhook received', body: 'MTN → 150,000 XAF · HMAC verified',    time: '1h ago' },
                       ].map((row, i) => (
                         <li key={i} className="flex gap-3 items-start">
-                          <div className={`w-8 h-8 rounded-lg ${row.color} flex items-center justify-center shrink-0`}>
+                          <div className={`w-8 h-8 rounded-lg ${row.color} flex items-center justify-center shrink-0 shadow`}>
                             <row.icon className="w-4 h-4" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium flex items-center justify-between gap-2">
+                            <div className="text-sm font-medium flex items-center justify-between gap-2 text-white">
                               <span>{row.title}</span>
-                              <span className="text-[10px] text-slate-400 font-normal">{row.time}</span>
+                              <span className="text-[10px] text-white/60 font-normal">{row.time}</span>
                             </div>
-                            <div className="text-xs text-slate-500 truncate">{row.body}</div>
+                            <div className="text-xs text-white/75 truncate">{row.body}</div>
                           </div>
                         </li>
                       ))}
@@ -238,7 +237,7 @@ const HomeInner: React.FC = () => {
                 )}
               </AnimatePresence>
             </div>
-          </Card>
+          </div>
         </div>
       </section>
 
