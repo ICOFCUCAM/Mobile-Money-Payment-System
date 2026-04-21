@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Slider } from '@/components/ui/slider';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
@@ -108,6 +109,14 @@ const Landing: React.FC = () => {
     schoolName: '', subdomain: '', email: '', phone: '',
     fullName: '', password: '', plan: 'basic'
   });
+
+  // Pricing calculator — slider value drives which plan lights up.
+  // Thresholds match the plan limits: ≤100 Basic, ≤1 000 Pro, else Enterprise.
+  const [studentCount, setStudentCount] = useState(500);
+  const recommendedPlanId =
+    studentCount <= 100 ? 'basic' :
+    studentCount <= 1000 ? 'pro' :
+    'enterprise';
 
   const onLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -428,43 +437,86 @@ class OrangeProvider extends BaseProvider {...}
       {/* Pricing (dark) */}
       <section id="pricing" className="bg-slate-950 text-white pt-8 pb-20">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center mb-12">
+          <FadeIn className="text-center mb-10">
             <Badge variant="outline" className="bg-blue-950 text-blue-300 border-blue-900 mb-3">Simple Pricing</Badge>
             <h2 className="font-display text-3xl md:text-4xl font-bold">Choose your plan</h2>
-            <p className="mt-3 text-slate-400">All plans include 14-day free trial. Cancel anytime.</p>
-          </div>
-          <div className="grid md:grid-cols-3 gap-5 max-w-5xl mx-auto">
-            {plans.map((p) => (
-              <Card
-                key={p.id}
-                className={`p-6 bg-slate-900 text-white border-slate-800 relative ${p.popular ? 'ring-2 ring-blue-500 shadow-xl md:scale-[1.03]' : ''}`}
-              >
-                {p.popular && (
-                  <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-600">Most Popular</Badge>
-                )}
-                <h3 className="text-xl font-bold">{p.name}</h3>
-                <div className="mt-4 flex items-baseline gap-1">
-                  <span className="text-5xl font-bold tracking-tight">${p.price}</span>
-                  <span className="text-slate-400">/month</span>
+            <p className="mt-3 text-slate-400">All plans include a 14-day free trial. Cancel anytime.</p>
+          </FadeIn>
+
+          {/* Pricing calculator */}
+          <FadeIn>
+            <div className="max-w-3xl mx-auto mb-14 p-6 rounded-2xl bg-slate-900/70 border border-slate-800">
+              <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
+                <div>
+                  <div className="text-xs uppercase tracking-widest text-slate-500">How many students?</div>
+                  <div className="font-display text-3xl font-bold mt-1">
+                    {studentCount >= 5000 ? '5,000+' : studentCount.toLocaleString()}
+                    <span className="text-slate-400 text-base font-normal ml-2">students</span>
+                  </div>
                 </div>
-                <ul className="mt-6 space-y-2.5">
-                  {p.features.map((f) => (
-                    <li key={f} className="flex items-start gap-2 text-sm text-slate-200">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" /> {f}
-                    </li>
-                  ))}
-                </ul>
-                <Button
-                  className={`w-full mt-7 ${p.popular ? 'bg-blue-600 hover:bg-blue-700' : 'bg-slate-100 text-slate-900 hover:bg-white'}`}
-                  onClick={() => {
-                    setRegisterForm((f) => ({ ...f, plan: p.id }));
-                    setMode('register');
-                  }}
-                >
-                  Get Started
-                </Button>
-              </Card>
-            ))}
+                <Badge className="bg-blue-600 hover:bg-blue-600 text-sm capitalize">
+                  Recommended: {recommendedPlanId}
+                </Badge>
+              </div>
+              <Slider
+                value={[studentCount]}
+                onValueChange={(v) => setStudentCount(v[0])}
+                min={10}
+                max={5000}
+                step={10}
+                className="mt-6"
+              />
+              <div className="mt-3 flex justify-between text-xs text-slate-500">
+                <span>10</span><span>100</span><span>1 000</span><span>5 000+</span>
+              </div>
+              <p className="mt-5 text-sm text-slate-400">
+                {recommendedPlanId === 'basic' && <>Your school fits comfortably on <span className="text-white font-medium">Basic — $10/mo</span>. Upgrade any time as you grow.</>}
+                {recommendedPlanId === 'pro' && <>At this scale, <span className="text-white font-medium">Pro — $25/mo</span> gives you multi-provider support, analytics and priority support.</>}
+                {recommendedPlanId === 'enterprise' && <>Over 1 000 students — you'll want <span className="text-white font-medium">Enterprise — $99/mo</span> for unlimited students, custom integrations and an SLA.</>}
+              </p>
+            </div>
+          </FadeIn>
+
+          <div className="grid md:grid-cols-3 gap-5 max-w-5xl mx-auto">
+            {plans.map((p, i) => {
+              const isRecommended = p.id === recommendedPlanId;
+              return (
+                <FadeIn key={p.id} delay={i * 0.08}>
+                  <Card
+                    className={`p-6 bg-slate-900 text-white border-slate-800 h-full relative transition-all duration-300 ${
+                      isRecommended ? 'ring-2 ring-blue-500 shadow-2xl md:scale-[1.03]' : p.popular ? 'ring-1 ring-slate-700' : ''
+                    }`}
+                  >
+                    {isRecommended && (
+                      <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-600 hover:bg-blue-600">
+                        Recommended for you
+                      </Badge>
+                    )}
+                    <h3 className="font-display text-xl font-bold">{p.name}</h3>
+                    <div className="mt-4 flex items-baseline gap-1">
+                      <span className="font-display text-5xl font-bold tracking-tight">${p.price}</span>
+                      <span className="text-slate-400">/month</span>
+                    </div>
+                    <ul className="mt-6 space-y-2.5">
+                      {p.features.map((f) => (
+                        <li key={f} className="flex items-start gap-2 text-sm text-slate-200">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" /> {f}
+                        </li>
+                      ))}
+                    </ul>
+                    <Button
+                      className={`w-full mt-7 ${isRecommended ? 'bg-blue-600 hover:bg-blue-700' : 'bg-slate-100 text-slate-900 hover:bg-white'}`}
+                      onClick={() => {
+                        setRegisterForm((f) => ({ ...f, plan: p.id }));
+                        setMode('register');
+                      }}
+                    >
+                      Get Started
+                    </Button>
+                  </Card>
+                </FadeIn>
+              );
+            })}
           </div>
         </div>
       </section>
