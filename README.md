@@ -14,17 +14,37 @@ A multi-tenant SaaS that lets schools accept tuition and fee payments over mobil
 - **Tested.** `npm test` runs 25 unit tests covering the critical invariants (encryption auth, replay protection, refund idempotency, no account enumeration, reconciliation). CI spins up a real Postgres 16.
 - **Batteries included.** Postgres-backed (Neon/Vercel-PG/Supabase/self-hosted). Vercel serverless entry + `vercel.json` out of the box. Optional Upstash Redis for multi-instance rate limits. Static SPA dashboard.
 
+## Repo layout
+
+Two apps live side by side:
+
+```
+.
+├── src/           Express + Postgres backend (REST API under /api/*)
+├── api/index.js   Vercel serverless entry that mounts the Express app
+├── web/           Vite + React + TypeScript + shadcn/ui frontend (SPA)
+└── vercel.json    Builds web/ to web/dist/ and routes /api + /webhooks serverless
+```
+
 ## Quick start (local)
 
+Two terminals:
+
 ```bash
+# Terminal 1: API on :3000
 cp .env.example .env
 # edit DATABASE_URL, ENCRYPTION_KEY, JWT_SECRET
 npm install
-npm run migrate       # creates schema in Postgres
-npm start             # or: npm run dev (nodemon)
+npm run migrate
+npm start
+
+# Terminal 2: web on :8080, proxies /api → :3000
+cd web
+npm install
+npm run dev
 ```
 
-Open <http://localhost:3000/>, register a school, log in, configure a provider, add students, submit a payment.
+Open <http://localhost:8080/>, register a school, log in, configure a provider, add students, submit a payment.
 
 Generate secrets:
 

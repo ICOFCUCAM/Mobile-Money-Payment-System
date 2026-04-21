@@ -1,9 +1,18 @@
 # Deployment Guide
 
-This project is a stateless Node.js/Express server backed by Postgres. It deploys as:
+The project has two apps in one repo:
 
-- **Vercel serverless functions** (recommended — zero-ops, free tier) via `vercel.json`.
-- **A Docker container** on any platform (Render, Fly, Railway, AWS ECS, Kubernetes).
+- `src/` — Express + Postgres API.
+- `web/` — Vite + React + shadcn/ui SPA.
+
+It deploys as:
+
+- **Vercel** (recommended, via `vercel.json`):
+    - `buildCommand` installs `web/` deps and runs `vite build` into `web/dist/`.
+    - `outputDirectory: web/dist` — Vercel's CDN serves the SPA statically.
+    - `/api/*`, `/webhooks/*`, `/health` are rewritten to the serverless function at `api/index.js`, which mounts the Express app.
+    - Everything else falls through to `/index.html` so the SPA's client router can handle deep links (e.g. `/forgot-password`).
+- **A Docker container** on any platform (Render, Fly, Railway, AWS ECS, Kubernetes) — the `Dockerfile` runs only the Express API. Front the container with your own CDN if you want the SPA co-located.
 - **A plain Node.js process** (`npm start`) behind your own reverse proxy.
 
 ## Deploy from Git (recommended)
