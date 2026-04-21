@@ -416,6 +416,32 @@ const Landing: React.FC = () => {
         </div>
       </section>
 
+      {/* Logo wall — schools already using SchoolPay */}
+      <section className="border-b border-slate-100 bg-white py-10">
+        <div className="max-w-7xl mx-auto px-6">
+          <FadeIn>
+            <div className="text-center text-xs uppercase tracking-widest text-slate-400 mb-6">
+              Trusted by schools across Africa
+            </div>
+            <div className="flex items-center justify-around flex-wrap gap-x-10 gap-y-5 opacity-70 grayscale">
+              {[
+                { name: 'Greenwood High',        icon: GraduationCap },
+                { name: 'Lycée Saint-Joseph',   icon: Building2 },
+                { name: 'Nairobi Prep',          icon: Globe2 },
+                { name: 'Quin Chama Academy',    icon: ShieldCheck },
+                { name: 'Accra International',   icon: Layers },
+                { name: 'Dakar Montessori',      icon: BarChart3 },
+              ].map((l) => (
+                <div key={l.name} className="flex items-center gap-2 text-slate-600">
+                  <l.icon className="w-5 h-5" />
+                  <span className="font-display font-semibold tracking-tight">{l.name}</span>
+                </div>
+              ))}
+            </div>
+          </FadeIn>
+        </div>
+      </section>
+
       {/* Stats strip — light bg, blue counter-up numbers */}
       <section className="border-y border-slate-100 bg-white py-14">
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
@@ -484,6 +510,63 @@ const Landing: React.FC = () => {
                   <h3 className="font-display text-xl font-bold mb-2">{s.title}</h3>
                   <p className="text-sm text-slate-600 leading-relaxed">{s.body}</p>
                 </div>
+              </FadeIn>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Testimonials */}
+      <section className="bg-slate-50 py-20 border-y border-slate-100">
+        <div className="max-w-7xl mx-auto px-6">
+          <FadeIn className="text-center mb-10">
+            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 mb-3">What schools say</Badge>
+            <h2 className="font-display text-3xl md:text-4xl font-bold">Bursars love it. So do parents.</h2>
+          </FadeIn>
+          <div className="grid md:grid-cols-3 gap-5">
+            {[
+              {
+                name: 'James Chama',
+                role: 'Finance Director',
+                school: 'Quin Chama Academy',
+                initial: 'J',
+                grad: 'from-blue-500 to-indigo-600',
+                quote:
+                  'We used to chase parents for MoMo receipts and type them into Excel. With SchoolPay a payment is verified and the student credited in under two seconds. My team got Fridays back.'
+              },
+              {
+                name: 'Sarah Okonkwo',
+                role: 'Head Bursar',
+                school: 'Greenwood High',
+                initial: 'S',
+                grad: 'from-emerald-500 to-teal-600',
+                quote:
+                  'The audit log alone justified the subscription. Every reversal, every provider webhook, every student edit is on one timeline we can hand to the auditors.'
+              },
+              {
+                name: 'Pierre Mbappe',
+                role: 'School Administrator',
+                school: 'Lycée Saint-Joseph',
+                initial: 'P',
+                grad: 'from-purple-500 to-pink-600',
+                quote:
+                  'Setup took an afternoon. We configured MTN and Orange, pointed the webhooks, and parents started paying the same day. The reconciliation worker caught four stuck payments in the first week.'
+              }
+            ].map((t, i) => (
+              <FadeIn key={t.name} delay={i * 0.08}>
+                <Card className="p-6 h-full border-slate-100 bg-white relative hover:shadow-md transition-shadow">
+                  <Quote className="absolute top-4 right-4 w-6 h-6 text-blue-100" />
+                  <p className="text-sm text-slate-700 leading-relaxed">&ldquo;{t.quote}&rdquo;</p>
+                  <div className="mt-5 pt-4 border-t border-slate-100 flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${t.grad} flex items-center justify-center text-white font-bold`}>
+                      {t.initial}
+                    </div>
+                    <div>
+                      <div className="font-semibold text-sm">{t.name}</div>
+                      <div className="text-xs text-slate-500">{t.role} · {t.school}</div>
+                    </div>
+                  </div>
+                </Card>
               </FadeIn>
             ))}
           </div>
