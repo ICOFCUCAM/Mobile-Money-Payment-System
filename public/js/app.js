@@ -140,6 +140,7 @@
           <div id="err"></div>
           <button type="submit">Sign in</button>
           <a href="#/register" style="margin-left:10px;">Register new school</a>
+          <a href="#/forgot" style="margin-left:10px;">Forgot password?</a>
         </form>
       </div>`);
     document.getElementById('f').addEventListener('submit', async (e) => {
@@ -154,6 +155,67 @@
         navigate('#/dashboard');
       } catch (err) {
         toast(err.message, 'error', { title: 'Login failed' });
+      }
+    });
+  });
+
+  route('#/forgot', async () => {
+    render(`
+      <div class="card" style="max-width:420px;margin:40px auto;">
+        <h1>Forgot password</h1>
+        <p class="muted">Enter your email. If an account exists, we'll issue a reset token that's valid for 1 hour.</p>
+        <form id="f">
+          <div class="field"><label>Email</label><input name="email" type="email" required></div>
+          <div class="field"><label>School slug (optional)</label><input name="schoolSlug"></div>
+          <button type="submit">Send reset link</button>
+          <a href="#/login" style="margin-left:10px;">Back to login</a>
+        </form>
+        <div id="devToken" style="margin-top:14px;"></div>
+      </div>`);
+    document.getElementById('f').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(e.target).entries());
+      if (!data.schoolSlug) delete data.schoolSlug;
+      try {
+        const res = await Api.post('/auth/password-reset/request', data);
+        toast('If the account exists, a reset link has been issued.', 'success');
+        // When the server is configured with PASSWORD_RESET_EXPOSE_TOKEN=1 (dev mode),
+        // it returns the plaintext token in the response so we can surface a one-click link.
+        if (res && res.token) {
+          const link = `${location.origin}/#/reset?token=${encodeURIComponent(res.token)}`;
+          document.getElementById('devToken').innerHTML = `
+            <div class="alert warn"><b>Dev mode:</b> server returned the reset token directly.
+              <div style="margin-top:6px;"><a href="${link}">Open reset link</a></div>
+              <pre style="margin-top:6px;">${escape(res.token)}</pre>
+            </div>`;
+        }
+      } catch (err) {
+        toast(err.message, 'error', { title: 'Request failed' });
+      }
+    });
+  });
+
+  route('#/reset', async (params) => {
+    const token = (params && params.get('token')) || '';
+    render(`
+      <div class="card" style="max-width:420px;margin:40px auto;">
+        <h1>Reset password</h1>
+        <form id="f">
+          <div class="field"><label>Reset token</label><input name="token" value="${escape(token)}" required></div>
+          <div class="field"><label>New password (min 8 chars)</label><input name="newPassword" type="password" minlength="8" required></div>
+          <button type="submit">Set new password</button>
+          <a href="#/login" style="margin-left:10px;">Back to login</a>
+        </form>
+      </div>`);
+    document.getElementById('f').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(e.target).entries());
+      try {
+        await Api.post('/auth/password-reset/confirm', data);
+        toast('Password updated. Please sign in.', 'success');
+        navigate('#/login');
+      } catch (err) {
+        toast(err.message, 'error', { title: 'Reset failed' });
       }
     });
   });
@@ -526,9 +588,11 @@
   });
 
   function dispatch() {
-    const hash = window.location.hash || '#/login';
-    const handler = routes[hash] || routes['#/login'];
-    handler();
+    const raw = window.location.hash || '#/login';
+    const [path, query = ''] = raw.split('?');
+    const params = new URLSearchParams(query);
+    const handler = routes[path] || routes['#/login'];
+    handler(params);
   }
 
   window.addEventListener('hashchange', dispatch);
