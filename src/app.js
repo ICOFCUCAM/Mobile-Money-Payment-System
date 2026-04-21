@@ -19,6 +19,7 @@ const paymentsRoutes = require('./modules/payments/payments.routes');
 const subscriptionsRoutes = require('./modules/subscriptions/subscriptions.routes');
 const webhooksRoutes = require('./modules/webhooks/webhooks.routes');
 const dashboardRoutes = require('./modules/dashboard/dashboard.routes');
+const publicRoutes = require('./modules/public/public.routes');
 
 const app = express();
 
@@ -73,6 +74,9 @@ app.use('/api', apiLimiter);
 app.use('/api/schools', schoolsRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/subscriptions', subscriptionsRoutes);
+
+// School-website integration endpoints (Bearer API key)
+app.use('/api/public', publicRoutes);
 
 // Tenant-scoped API (school is resolved from JWT or API key)
 app.use('/api/students', studentsRoutes);
