@@ -69,7 +69,38 @@
     });
   }
 
-  window.__ui = { toast, tryAction, confirmDialog };
+  /**
+   * Render a simple Prev/Next pager. `page` is 1-based. `hasMore` is typically
+   * `rows.length === pageSize`. `basePath` is the route to navigate to, and
+   * `extraParams` carries any non-page filters so we don't drop them.
+   */
+  function pagerHtml({ page, hasMore, pageSize, rowCount, basePath, extraParams = {} }) {
+    const mk = (p) => {
+      const qs = new URLSearchParams({ ...extraParams, page: String(p) });
+      return `${basePath}?${qs.toString()}`;
+    };
+    const start = rowCount === 0 ? 0 : (page - 1) * pageSize + 1;
+    const end = (page - 1) * pageSize + rowCount;
+    return `
+      <div class="pagination">
+        <span class="muted">${rowCount === 0 ? 'No results' : `${start}–${end}`}</span>
+        <button class="secondary small" ${page <= 1 ? 'disabled' : ''} data-page="${page - 1}">← Prev</button>
+        <button class="secondary small" ${!hasMore ? 'disabled' : ''} data-page="${page + 1}">Next →</button>
+      </div>`;
+    // Note: the caller wires click handlers that read data-page and call navigate(mk(p)).
+  }
+
+  function bindPager(containerSelector, basePath, extraParams) {
+    document.querySelectorAll(`${containerSelector} button[data-page]`).forEach((b) => {
+      b.addEventListener('click', () => {
+        const p = Number(b.dataset.page);
+        const qs = new URLSearchParams({ ...extraParams, page: String(p) });
+        navigate(`${basePath}?${qs.toString()}`);
+      });
+    });
+  }
+
+  window.__ui = { toast, tryAction, confirmDialog, pagerHtml, bindPager };
 
   function moneyFmt(amount, currency) {
     return `${Number(amount || 0).toLocaleString()} ${currency || ''}`.trim();
@@ -275,11 +306,17 @@
     document.getElementById('logout').onclick = logout;
   });
 
-  route('#/students', async () => {
+  route('#/students', async (params) => {
     if (!protect()) return;
     await loadMe();
-    const res = await Api.get('/students?limit=200');
-    const rows = (res.students || []).map((s) => `
+    const q = (params && params.get('q')) || '';
+    const page = Math.max(1, Number((params && params.get('page')) || '1'));
+    const pageSize = 50;
+    const listQs = new URLSearchParams({ limit: String(pageSize), offset: String((page - 1) * pageSize) });
+    if (q) listQs.set('q', q);
+    const res = await Api.get('/students?' + listQs.toString());
+    const students = res.students || [];
+    const rows = students.map((s) => `
       <tr><td>${escape(s.student_code)}</td><td>${escape(s.full_name)}</td><td>${escape(s.class_name||'')}</td><td>${moneyFmt(s.balance, s.currency)}</td></tr>`).join('');
     const body = `
       <div class="card">
@@ -291,12 +328,26 @@
           <div class="field"><label>Phone</label><input name="phone"></div>
           <div class="field" style="flex:0;"><label>&nbsp;</label><button type="submit">Add</button></div>
         </form>
-        <div id="err"></div>
       </div>
       <div class="card">
-        <h2>Students</h2>
+        <div class="toolbar">
+          <h2 style="margin:0;">Students</h2>
+          <form id="searchForm" class="row" style="flex:0; min-width:260px;">
+            <input name="q" value="${escape(q)}" placeholder="Search name or code…">
+            <button class="secondary small shrink" type="submit">Search</button>
+            ${q ? `<a href="#/students" class="secondary btn small shrink" style="text-decoration:none;">Clear</a>` : ''}
+          </form>
+        </div>
         <table><thead><tr><th>Code</th><th>Name</th><th>Class</th><th>Balance</th></tr></thead>
-          <tbody>${rows || '<tr><td colspan=4 class="muted">No students yet.</td></tr>'}</tbody></table>
+          <tbody>${rows || `<tr><td colspan=4 class="muted">${q ? `No students match "${escape(q)}"` : 'No students yet.'}</td></tr>`}</tbody></table>
+        ${pagerHtml({
+          page,
+          hasMore: students.length === pageSize,
+          pageSize,
+          rowCount: students.length,
+          basePath: '#/students',
+          extraParams: q ? { q } : {}
+        })}
       </div>`;
     render(shell('students', body));
     document.getElementById('logout').onclick = logout;
@@ -311,6 +362,12 @@
         toast(err.message, 'error', { title: 'Could not add student' });
       }
     });
+    document.getElementById('searchForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const val = e.target.elements.q.value.trim();
+      navigate(val ? `#/students?q=${encodeURIComponent(val)}` : '#/students');
+    });
+    bindPager('.pagination', '#/students', q ? { q } : {});
   });
 
   route('#/payments', async (params) => {
@@ -318,7 +375,9 @@
     await loadMe();
     const statusFilter = (params && params.get('status')) || '';
     const providerFilter = (params && params.get('provider')) || '';
-    const listQs = new URLSearchParams({ limit: '100' });
+    const page = Math.max(1, Number((params && params.get('page')) || '1'));
+    const pageSize = 50;
+    const listQs = new URLSearchParams({ limit: String(pageSize), offset: String((page - 1) * pageSize) });
     if (statusFilter) listQs.set('status', statusFilter);
     if (providerFilter) listQs.set('provider', providerFilter);
     const [txList, configs] = await Promise.all([
@@ -376,6 +435,17 @@
         </div>
         <table><thead><tr><th>Date</th><th>Provider</th><th>Ref</th><th>Amount</th><th>Status</th><th></th></tr></thead>
           <tbody>${rows || `<tr><td colspan=6 class="muted">${statusFilter||providerFilter ? 'No transactions match this filter.' : 'No transactions yet.'}</td></tr>`}</tbody></table>
+        ${pagerHtml({
+          page,
+          hasMore: (txList.transactions || []).length === pageSize,
+          pageSize,
+          rowCount: (txList.transactions || []).length,
+          basePath: '#/payments',
+          extraParams: {
+            ...(statusFilter ? { status: statusFilter } : {}),
+            ...(providerFilter ? { provider: providerFilter } : {})
+          }
+        })}
       </div>`;
     render(shell('payments', body));
     document.getElementById('logout').onclick = logout;
@@ -401,6 +471,10 @@
     }
     document.getElementById('statusFilter').addEventListener('change', applyFilters);
     document.getElementById('providerFilter').addEventListener('change', applyFilters);
+    bindPager('.pagination', '#/payments', {
+      ...(statusFilter ? { status: statusFilter } : {}),
+      ...(providerFilter ? { provider: providerFilter } : {})
+    });
 
     const reconcileBtn = document.getElementById('reconcile');
     if (reconcileBtn) {
