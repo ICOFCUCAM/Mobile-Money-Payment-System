@@ -29,51 +29,51 @@ const HomeInner: React.FC = () => {
   return (
     <>
       {/* Hero */}
-      <section className="relative overflow-hidden bg-slate-50">
+      <section className="relative overflow-hidden bg-blue-900">
         {/*
-         * Background photograph — a real scene behind the headline, faded so the
-         * foreground copy and dashboard card stay legible. Falls back to the
-         * soft blue wash if the CDN image can't load.
+         * Classroom photograph as the hero backdrop. Uses a reliable Unsplash CDN
+         * image; if blocked, the deep-blue section background shows through so
+         * nothing ever looks broken.
          */}
         <img
-          src="https://images.unsplash.com/photo-1544717297-fa95b6ee9643?auto=format&fit=crop&w=2000&q=80"
+          src="https://images.unsplash.com/photo-1427504494785-3a9ca7044f45?auto=format&fit=crop&w=2000&q=80"
           alt=""
           aria-hidden="true"
-          className="absolute inset-0 w-full h-full object-cover opacity-25"
+          className="absolute inset-0 w-full h-full object-cover"
           onError={(e) => { (e.currentTarget.style.display = 'none'); }}
         />
-        {/* Soft gradient wash so the left-side text reads on any photo */}
-        <div className="absolute inset-0 bg-gradient-to-r from-white via-white/85 to-white/40 pointer-events-none" />
-        <div className="absolute inset-0 bg-gradient-to-b from-blue-50/50 via-transparent to-white pointer-events-none" />
-        {/* Keep the two gradient blobs for subtle color — they sit on top of the photo wash */}
-        <div className="absolute -top-20 -left-24 w-[420px] h-[420px] rounded-full bg-blue-400/15 blur-3xl pointer-events-none" />
-        <div className="absolute top-40 -right-32 w-[520px] h-[520px] rounded-full bg-indigo-400/15 blur-3xl pointer-events-none" />
+        {/* Brand-blue wash on top so the hero still reads as OUR product, and the
+            left-side headline stays legible on any photo. */}
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-950/90 via-blue-900/80 to-blue-900/45 pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-white pointer-events-none" />
+        <div className="absolute -top-20 -left-24 w-[420px] h-[420px] rounded-full bg-blue-400/20 blur-3xl pointer-events-none" />
+        <div className="absolute top-40 -right-32 w-[520px] h-[520px] rounded-full bg-indigo-400/20 blur-3xl pointer-events-none" />
 
-        <div className="relative max-w-7xl mx-auto px-6 py-16 lg:py-24 grid lg:grid-cols-[1.1fr_1fr] gap-12 items-center">
-          <div>
-            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 font-medium mb-6">
+        <div className="relative max-w-7xl mx-auto px-6 py-20 lg:py-28 grid lg:grid-cols-[1.1fr_1fr] gap-12 items-center">
+          <div className="text-white">
+            <Badge variant="outline" className="bg-white/10 text-blue-100 border-white/20 font-medium mb-6 backdrop-blur-sm">
               Multi-Tenant Fintech Infrastructure
             </Badge>
-            <h1 className="font-display text-5xl md:text-6xl font-bold tracking-tight leading-[1.05]">
+            <h1 className="font-display text-5xl md:text-6xl font-bold tracking-tight leading-[1.05] drop-shadow-sm">
               School Payments,<br />
-              <span className="text-blue-600">Unified &<br />Automated.</span>
+              <span className="text-blue-300">Unified &<br />Automated.</span>
             </h1>
-            <p className="mt-6 text-lg text-slate-600 max-w-xl leading-relaxed">
+            <p className="mt-6 text-lg text-blue-50/90 max-w-xl leading-relaxed">
               The complete SaaS platform for schools to accept mobile money payments from MTN,
               Orange, and Airtel — with automatic verification, student credit, and real-time dashboards.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <Button size="lg" className="bg-blue-600 hover:bg-blue-700" onClick={() => setMode('register')}>
+              <Button size="lg" className="bg-blue-600 hover:bg-blue-500 shadow-lg" onClick={() => setMode('register')}>
                 Start Free Trial <ArrowRight className="w-4 h-4 ml-1" />
               </Button>
-              <Button asChild size="lg" variant="outline">
+              <Button asChild size="lg" variant="outline" className="bg-white/10 border-white/30 text-white hover:bg-white/20 hover:text-white backdrop-blur-sm">
                 <Link to="/developers">See Developer Docs</Link>
               </Button>
             </div>
-            <div className="mt-8 flex items-center gap-6 text-sm text-slate-600 flex-wrap">
-              <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> No credit card</span>
-              <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> 14-day trial</span>
-              <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-emerald-500" /> Setup in minutes</span>
+            <div className="mt-8 flex items-center gap-6 text-sm text-blue-100 flex-wrap">
+              <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-emerald-400" /> No credit card</span>
+              <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-emerald-400" /> 14-day trial</span>
+              <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-emerald-400" /> Setup in minutes</span>
             </div>
           </div>
 
@@ -331,7 +331,7 @@ const HomeInner: React.FC = () => {
           </FadeIn>
           <div className="grid md:grid-cols-3 gap-5">
             {[
-              { name: 'James Chama', role: 'Finance Director', school: 'Quin Chama Academy', initial: 'J', grad: 'from-blue-500 to-indigo-600',
+              { name: 'Amadou Diallo', role: 'Finance Director', school: 'Riverbend Academy', initial: 'A', grad: 'from-blue-500 to-indigo-600',
                 quote: 'We used to chase parents for MoMo receipts and type them into Excel. With SchoolPay a payment is verified and the student credited in under two seconds.' },
               { name: 'Sarah Okonkwo', role: 'Head Bursar', school: 'Greenwood High', initial: 'S', grad: 'from-emerald-500 to-teal-600',
                 quote: 'The audit log alone justified the subscription. Every reversal, every provider webhook, every student edit is on one timeline we can hand to the auditors.' },
