@@ -1,0 +1,363 @@
+openapi: 3.1.0
+info:
+  title: School Payment SaaS API
+  version: 1.0.0
+  description: |
+    Multi-tenant API for schools to accept mobile money (MTN, Orange) payments.
+    Every endpoint under `/api/*` is scoped to a single tenant (school), resolved via JWT,
+    per-school API key, `X-School-Slug` header, or subdomain.
+servers:
+  - url: https://{host}
+    description: Deployed instance (Vercel etc.)
+    variables:
+      host: { default: example.vercel.app }
+  - url: http://localhost:3000
+    description: Local dev
+
+tags:
+  - { name: schools,       description: Tenant (school) lifecycle + payment configs }
+  - { name: auth,          description: User authentication & management }
+  - { name: students,      description: Per-school student records }
+  - { name: payments,      description: Submit / list payments }
+  - { name: dashboard,     description: Aggregated tiles + reports }
+  - { name: subscriptions, description: Plans + plan changes }
+  - { name: webhooks,      description: Provider callbacks (HMAC-signed) }
+
+security:
+  - bearerAuth: []
+  - apiKeyAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth: { type: http, scheme: bearer, bearerFormat: JWT }
+    apiKeyAuth: { type: apiKey, in: header, name: X-API-Key }
+  schemas:
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code: { type: string }
+            message: { type: string }
+            details: { type: object, additionalProperties: true }
+    School:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        slug: { type: string }
+        email: { type: string, format: email }
+        phone: { type: string, nullable: true }
+        subscription_plan: { type: string, enum: [basic, pro, enterprise] }
+        subscription_status: { type: string }
+        is_active: { type: boolean }
+        created_at: { type: string, format: date-time }
+    Student:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        school_id: { type: string, format: uuid }
+        student_code: { type: string }
+        full_name: { type: string }
+        class_name: { type: string, nullable: true }
+        phone: { type: string, nullable: true }
+        balance: { type: integer }
+        currency: { type: string }
+        created_at: { type: string, format: date-time }
+    Transaction:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        school_id: { type: string, format: uuid }
+        student_id: { type: string, format: uuid, nullable: true }
+        provider: { type: string, enum: [MTN, ORANGE] }
+        external_id: { type: string }
+        amount: { type: integer }
+        currency: { type: string }
+        status: { type: string, enum: [pending, success, failed, reversed] }
+        phone: { type: string, nullable: true }
+        verified_at: { type: string, format: date-time, nullable: true }
+        created_at: { type: string, format: date-time }
+    Plan:
+      type: object
+      properties:
+        id: { type: string, enum: [basic, pro, enterprise] }
+        name: { type: string }
+        price: { type: number, nullable: true }
+        currency: { type: string }
+        interval: { type: string }
+        features: { type: object, additionalProperties: true }
+
+paths:
+  /health:
+    get:
+      tags: [schools]
+      security: []
+      summary: Liveness probe
+      responses: { '200': { description: OK } }
+
+  /api/schools/register:
+    post:
+      tags: [schools]
+      security: []
+      summary: Self-service school sign-up
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, slug, email, password, adminName]
+              properties:
+                name: { type: string }
+                slug: { type: string, pattern: '^[a-z0-9][a-z0-9-]+$' }
+                email: { type: string, format: email }
+                phone: { type: string }
+                adminName: { type: string }
+                password: { type: string, minLength: 8 }
+                plan: { type: string, enum: [basic, pro, enterprise] }
+      responses:
+        '201':
+          description: School + admin user + one-time API key
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  school: { $ref: '#/components/schemas/School' }
+                  apiKey: { type: string, description: 'Shown once. Persist it.' }
+        '409': { description: Slug or email already exists, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+
+  /api/schools/me:
+    get:
+      tags: [schools]
+      summary: Get current school
+      responses: { '200': { description: OK } }
+    patch:
+      tags: [schools]
+      summary: Update school profile (admin)
+      responses: { '200': { description: Updated } }
+
+  /api/schools/me/api-key/rotate:
+    post:
+      tags: [schools]
+      summary: Rotate the per-school API key
+      responses:
+        '200':
+          description: New plaintext key (shown once)
+          content: { application/json: { schema: { type: object, properties: { apiKey: { type: string } } } } }
+
+  /api/schools/me/payment-configs:
+    get:
+      tags: [schools]
+      summary: List provider configs
+      responses: { '200': { description: OK } }
+    put:
+      tags: [schools]
+      summary: Upsert a provider's encrypted credentials (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider, api_key, api_secret]
+              properties:
+                provider: { type: string, enum: [MTN, ORANGE] }
+                api_key: { type: string }
+                api_secret: { type: string }
+                base_url: { type: string }
+                metadata: { type: object }
+                is_active: { type: boolean }
+      responses: { '201': { description: Created/updated } }
+
+  /api/auth/login:
+    post:
+      tags: [auth]
+      security: []
+      summary: Issue a JWT
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string }
+                schoolSlug: { type: string, description: Optional when email is globally unique }
+      responses:
+        '200':
+          description: Token + user + school
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token: { type: string }
+                  user: { type: object }
+                  school: { type: object }
+
+  /api/auth/me:
+    get: { tags: [auth], summary: Who am I, responses: { '200': { description: OK } } }
+
+  /api/auth/users:
+    get:  { tags: [auth], summary: List users (admin), responses: { '200': { description: OK } } }
+    post:
+      tags: [auth]
+      summary: Create a user (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, role, fullName]
+              properties:
+                email: { type: string, format: email }
+                password: { type: string, minLength: 8 }
+                fullName: { type: string }
+                role: { type: string, enum: [admin, bursar, auditor] }
+      responses: { '201': { description: Created } }
+
+  /api/students:
+    get:
+      tags: [students]
+      summary: List students
+      parameters:
+        - { name: q,      in: query, schema: { type: string } }
+        - { name: limit,  in: query, schema: { type: integer, maximum: 500 } }
+        - { name: offset, in: query, schema: { type: integer, minimum: 0 } }
+      responses: { '200': { description: OK } }
+    post:
+      tags: [students]
+      summary: Create a student
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [studentCode, fullName]
+              properties:
+                studentCode: { type: string }
+                fullName: { type: string }
+                className: { type: string }
+                phone: { type: string }
+      responses:
+        '201': { description: Created }
+        '402': { description: Plan cap exceeded }
+
+  /api/students/{id}:
+    get:    { tags: [students], summary: Get a student, responses: { '200': { description: OK } } }
+    patch:  { tags: [students], summary: Update a student, responses: { '200': { description: OK } } }
+    delete: { tags: [students], summary: Delete a student (admin), responses: { '204': { description: Deleted } } }
+
+  /api/payments:
+    post:
+      tags: [payments]
+      summary: Submit a transaction ID for verification and credit
+      description: |
+        Looks up the school's credentials for `provider`, calls the provider's verify API,
+        and — only on `success` — records the transaction and credits the student in a single
+        DB transaction. Idempotent on `(school_id, provider, externalId)`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [studentCode, provider, externalId]
+              properties:
+                studentCode: { type: string }
+                provider:    { type: string, enum: [MTN, ORANGE] }
+                externalId:  { type: string, description: Provider-issued transaction reference }
+      responses:
+        '201': { description: Verified & credited, content: { application/json: { schema: { type: object, properties: { transaction: { $ref: '#/components/schemas/Transaction' } } } } } }
+        '400': { description: Verification returned failed/pending }
+        '402': { description: Provider not available on plan }
+        '404': { description: Student or provider config not found }
+        '409': { description: Duplicate external id }
+    get:
+      tags: [payments]
+      summary: List transactions
+      parameters:
+        - { name: status,    in: query, schema: { type: string, enum: [pending, success, failed, reversed] } }
+        - { name: provider,  in: query, schema: { type: string } }
+        - { name: studentId, in: query, schema: { type: string } }
+        - { name: limit,     in: query, schema: { type: integer, maximum: 500 } }
+        - { name: offset,    in: query, schema: { type: integer, minimum: 0 } }
+      responses: { '200': { description: OK } }
+
+  /api/payments/summary:
+    get: { tags: [payments], summary: Count + total collected, responses: { '200': { description: OK } } }
+
+  /api/payments/{id}:
+    get: { tags: [payments], summary: Fetch one transaction, responses: { '200': { description: OK } } }
+
+  /api/dashboard/overview:
+    get: { tags: [dashboard], summary: Aggregated tiles + recent activity, responses: { '200': { description: OK } } }
+
+  /api/dashboard/report:
+    get:
+      tags: [dashboard]
+      summary: Time-series grouped by day (Pro+)
+      parameters:
+        - { name: days, in: query, schema: { type: integer, minimum: 1, maximum: 365 } }
+      responses:
+        '200': { description: OK }
+        '402': { description: Requires Pro or Enterprise plan }
+
+  /api/subscriptions/plans:
+    get:
+      tags: [subscriptions]
+      security: []
+      summary: Public catalogue of plans
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  plans: { type: array, items: { $ref: '#/components/schemas/Plan' } }
+
+  /api/subscriptions/current:
+    get: { tags: [subscriptions], summary: Current plan + history, responses: { '200': { description: OK } } }
+
+  /api/subscriptions/change:
+    post:
+      tags: [subscriptions]
+      summary: Change plan (admin)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [plan]
+              properties:
+                plan: { type: string, enum: [basic, pro, enterprise] }
+                paymentReference: { type: string }
+      responses: { '200': { description: OK } }
+
+  /webhooks/{provider}/{schoolSlug}:
+    post:
+      tags: [webhooks]
+      security: []
+      summary: Provider webhook callback (HMAC-signed)
+      parameters:
+        - { name: provider,   in: path, required: true, schema: { type: string, enum: [MTN, ORANGE] } }
+        - { name: schoolSlug, in: path, required: true, schema: { type: string } }
+      description: |
+        Called by the payment provider after a collection. The request body is HMAC-signed
+        using the school's provider `api_secret`; invalid signatures are rejected with 401.
+        The endpoint is idempotent on `(school_id, provider, externalId)`.
+      requestBody: { required: true, content: { application/json: { schema: { type: object } } } }
+      responses:
+        '200': { description: Already processed (idempotent no-op) }
+        '201': { description: New transaction recorded }
+        '401': { description: Invalid signature }

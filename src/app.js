@@ -51,6 +51,22 @@ app.use(express.urlencoded({ extended: true }));
 
 app.get('/health', (_req, res) => res.json({ ok: true, uptime: process.uptime() }));
 
+// Readiness probe with a DB ping. Surfaces the real error only when DEBUG_ERRORS=1.
+app.get('/api/_status', async (_req, res) => {
+  const { db } = require('./core/database');
+  try {
+    await db.query('SELECT 1');
+    res.json({ ok: true, db: 'ok', uptime: process.uptime() });
+  } catch (err) {
+    const debug = process.env.DEBUG_ERRORS === '1' || process.env.DEBUG_ERRORS === 'true';
+    res.status(503).json({
+      ok: false,
+      db: 'error',
+      error: debug ? { name: err.name, code: err.code, message: err.message } : 'unavailable'
+    });
+  }
+});
+
 app.use('/api', apiLimiter);
 
 // Public / semi-public API

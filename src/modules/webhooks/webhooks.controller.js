@@ -1,6 +1,6 @@
 'use strict';
 
-const { getDb } = require('../../core/database');
+const { db } = require('../../core/database');
 const { AuthError, NotFoundError, ValidationError } = require('../../core/errors');
 const { REGISTRY, getProviderForSchool } = require('../../providers/ProviderFactory');
 const paymentsService = require('../payments/payments.service');
@@ -11,10 +11,9 @@ const logger = require('../../core/logger');
  *
  * Route shape: POST /webhooks/:provider/:schoolSlug
  * Providers post here after successful mobile-money collections. We:
- *   1. Look up the school by slug (fast tenant resolution, no auth required on the
- *      path itself — integrity is guaranteed by the signature check).
+ *   1. Look up the school by slug.
  *   2. Instantiate the school's provider instance (with its creds).
- *   3. Validate the signature.
+ *   3. Validate the signature using the school's own api_secret.
  *   4. Parse + upsert the transaction idempotently.
  */
 async function handle(req, res, next) {
@@ -23,12 +22,11 @@ async function handle(req, res, next) {
     const schoolSlug = req.params.schoolSlug;
     if (!REGISTRY[providerId]) throw new ValidationError(`Unknown provider: ${providerId}`);
 
-    const school = getDb()
-      .prepare('SELECT * FROM schools WHERE slug = ? AND is_active = 1')
-      .get(schoolSlug);
+    const schoolRes = await db.query('SELECT * FROM schools WHERE slug = $1 AND is_active = TRUE', [schoolSlug]);
+    const school = schoolRes.rows[0];
     if (!school) throw new NotFoundError('Unknown school');
 
-    const provider = getProviderForSchool(school.id, providerId);
+    const provider = await getProviderForSchool(school.id, providerId);
 
     const rawBody = req.rawBody || JSON.stringify(req.body || {});
     if (!provider.verifyWebhook(req.headers, rawBody)) {
@@ -37,7 +35,7 @@ async function handle(req, res, next) {
     }
 
     const event = provider.parseWebhook(req.body);
-    const result = paymentsService.recordWebhookTransaction(school, providerId, event, rawBody);
+    const result = await paymentsService.recordWebhookTransaction(school, providerId, event, rawBody);
 
     res.status(result.created ? 201 : 200).json({ ok: true, created: result.created });
   } catch (err) {

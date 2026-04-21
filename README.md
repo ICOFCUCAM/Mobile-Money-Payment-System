@@ -8,25 +8,66 @@ A multi-tenant SaaS that lets schools accept tuition and fee payments over mobil
 - **Tenant resolution** via JWT (user sessions), `X-API-Key` (machine), `X-School-Slug` header or subdomain (`<slug>.yourapp.com`).
 - **Provider abstraction layer.** A small `BaseProvider` contract plus a `ProviderFactory` registry lets you drop in new providers (Wave, M-Pesa…) without touching the rest of the code.
 - **Pluggable subscription plans.** Plan features (max students, available providers, reports, audit logs) are enforced in middleware (`planGuard`).
-- **Secure by default.** AES-256-GCM encryption of provider credentials at rest, bcrypt password hashes, HMAC signature verification on webhooks, helmet, strict rate limiting, per-tenant isolation, audit log on every sensitive action.
-- **Batteries included.** Zero-dependency (SQLite via `better-sqlite3`) persistence for development, swap-friendly for Postgres in production. Static single-page dashboard with login, student mgmt, payment verification, provider config and subscription upgrade.
+- **Secure by default.** AES-256-GCM encryption of provider credentials at rest, bcrypt password hashes, HMAC signature verification on webhooks, helmet, strict rate limiting, per-tenant isolation, audit log on every sensitive action. Token-based password reset with single-use tokens and no account enumeration.
+- **Fintech primitives.** Refunds/reversals, idempotent webhook ingestion, pending-transaction reconciliation worker, CSV export, replay protection via `UNIQUE(school_id, provider, external_id)`.
+- **Dashboard UX.** Toast notifications, confirm modals on destructive actions, status/provider filters, pagination + search, CSV download, Settings page (rotate API key, change password, delete school), forgot/reset password, dark-mode-aware styling.
+- **Tested.** `npm test` runs 25 unit tests covering the critical invariants (encryption auth, replay protection, refund idempotency, no account enumeration, reconciliation). CI spins up a real Postgres 16.
+- **Batteries included.** Postgres-backed (Neon/Vercel-PG/Supabase/self-hosted). Vercel serverless entry + `vercel.json` out of the box. Optional Upstash Redis for multi-instance rate limits. Static SPA dashboard.
 
-## Quick start
+## Repo layout
 
-```bash
-cp .env.example .env
-# edit ENCRYPTION_KEY + JWT_SECRET to real random values
-npm install
-npm start           # or: npm run dev (nodemon)
+Two apps live side by side:
+
+```
+.
+├── src/           Express + Postgres backend (REST API under /api/*)
+├── api/index.js   Vercel serverless entry that mounts the Express app
+├── web/           Vite + React + TypeScript + shadcn/ui frontend (SPA)
+└── vercel.json    Builds web/ to web/dist/ and routes /api + /webhooks serverless
 ```
 
-Open <http://localhost:3000/>, register a school, log in, configure a provider, add students, submit a payment.
+## Quick start (local)
 
-Generate production secrets:
+Two terminals:
+
+```bash
+# Terminal 1: API on :3000
+cp .env.example .env
+# edit DATABASE_URL, ENCRYPTION_KEY, JWT_SECRET
+npm install
+npm run migrate
+npm start
+
+# Terminal 2: web on :8080, proxies /api → :3000
+cd web
+npm install
+npm run dev
+```
+
+Open <http://localhost:8080/>, register a school, log in, configure a provider, add students, submit a payment.
+
+Generate secrets:
 
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 ```
+
+## Deploy to Vercel (from Git)
+
+After a one-time setup, **every push to `main` auto-deploys to production** and every feature branch / PR gets a preview URL, via GitHub Actions.
+
+One-time:
+
+1. Create a Neon Postgres DB; run `DATABASE_URL="<neon>" npm run migrate`.
+2. `npm i -g vercel && vercel login && vercel link` — note `orgId` + `projectId` from `.vercel/project.json`.
+3. Set `DATABASE_URL`, `ENCRYPTION_KEY`, `JWT_SECRET` in Vercel (production + preview environments).
+4. Add three GitHub repo secrets: `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID`.
+5. Push.
+
+Workflows: [`deploy-production.yml`](./.github/workflows/deploy-production.yml) + [`deploy-preview.yml`](./.github/workflows/deploy-preview.yml).
+
+Full guide (Upstash Redis, Docker, checklist): [`DEPLOYMENT.md`](./DEPLOYMENT.md).
+API reference: [`openapi.yaml`](./openapi.yaml).
 
 ## Architecture
 
@@ -79,34 +120,45 @@ public/                   Static dashboard (vanilla JS SPA)
 All `/api/*` routes are rate-limited. Authenticated routes accept either a JWT (`Authorization: Bearer …`) or a per-school API key (`X-API-Key: …`) where marked.
 
 ```
-POST   /api/schools/register            Public. Creates school + admin. Returns one-time API key.
-POST   /api/auth/login                  { email, password, schoolSlug? } -> { token, user, school }
-GET    /api/auth/me                     JWT. Who am I + which school.
-POST   /api/auth/users                  Admin. Invite bursar/auditor users.
+GET    /health                              Liveness.
+GET    /api/_status                         Liveness + DB readiness.
 
-GET    /api/schools/me                  JWT. School profile.
-PATCH  /api/schools/me                  Admin. Update name / phone / active.
-POST   /api/schools/me/api-key/rotate   Admin. Rotate the API key (returned once).
-GET    /api/schools/me/payment-configs  Admin/Bursar. List configured providers.
-PUT    /api/schools/me/payment-configs  Admin. Upsert provider creds (encrypted).
+POST   /api/schools/register                Public. Creates school + admin. Returns one-time API key.
+GET    /api/schools/me                      JWT. School profile.
+PATCH  /api/schools/me                      Admin. Update name / phone / active.
+DELETE /api/schools/me                      Admin. Delete tenant. Cascades.
+POST   /api/schools/me/api-key/rotate       Admin. Rotate the API key (returned once).
+GET    /api/schools/me/payment-configs      Admin/Bursar.
+PUT    /api/schools/me/payment-configs      Admin. Upsert provider creds (encrypted).
 
-GET    /api/students                    JWT or API key. ?q= search, ?limit&offset.
-POST   /api/students                    Admin/Bursar. Creates a student (plan cap enforced).
-PATCH  /api/students/:id                Admin/Bursar.
-DELETE /api/students/:id                Admin.
+POST   /api/auth/login                      { email, password, schoolSlug? } -> { token, user, school }
+GET    /api/auth/me                         JWT. Who am I + which school.
+POST   /api/auth/change-password            JWT. { currentPassword, newPassword }.
+POST   /api/auth/password-reset/request     Public. { email, schoolSlug? } -> { ok } (never leaks existence).
+POST   /api/auth/password-reset/confirm     Public. { token, newPassword }.
+GET    /api/auth/users                      Admin.
+POST   /api/auth/users                      Admin. { email, password, role, fullName }.
 
-POST   /api/payments                    Submit { studentCode, provider, externalId } for verification.
-GET    /api/payments                    List. ?status, ?provider, ?studentId, ?limit&offset.
-GET    /api/payments/summary            Dashboard tiles.
+GET    /api/students                        JWT or API key. ?q= search, ?limit&offset.
+POST   /api/students                        Admin/Bursar. Creates a student (plan cap enforced).
+PATCH  /api/students/:id                    Admin/Bursar.
+DELETE /api/students/:id                    Admin.
 
-GET    /api/dashboard/overview          Aggregated tiles + recent activity.
-GET    /api/dashboard/report?days=30    Pro+ plans only. Time series.
+POST   /api/payments                        Submit { studentCode, provider, externalId } for verification.
+GET    /api/payments                        List. ?status, ?provider, ?studentId, ?limit&offset.
+GET    /api/payments/summary                Dashboard tiles.
+GET    /api/payments/export.csv             CSV, respects ?status/?provider filters.
+POST   /api/payments/reconcile              Admin/Bursar. Re-polls pending txns.
+POST   /api/payments/:id/reverse            Admin. { reason? } -> marks reversed, debits student.
 
-GET    /api/subscriptions/plans         Public catalogue.
-GET    /api/subscriptions/current       Current plan + history.
-POST   /api/subscriptions/change        Admin. { plan: 'pro', paymentReference }.
+GET    /api/dashboard/overview              Aggregated tiles + recent activity.
+GET    /api/dashboard/report?days=30        Pro+ plans only. Time series.
 
-POST   /webhooks/:provider/:schoolSlug  Provider callback (HMAC-signed; no auth header).
+GET    /api/subscriptions/plans             Public catalogue.
+GET    /api/subscriptions/current           Current plan + history.
+POST   /api/subscriptions/change            Admin. { plan: 'pro', paymentReference }.
+
+POST   /webhooks/:provider/:schoolSlug      Provider callback (HMAC-signed; no auth header).
 ```
 
 ### Submitting a payment

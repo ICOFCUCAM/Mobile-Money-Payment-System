@@ -1,0 +1,39 @@
+name: Deploy to Vercel (production)
+
+# Runs whenever `main` is updated. Uses Vercel's prebuilt-deploy flow:
+#   1. `vercel pull`   fetches project settings + env vars into .vercel/
+#   2. `vercel build`  produces the output bundle locally
+#   3. `vercel deploy --prebuilt` uploads it as a production release
+#
+# Required repository secrets (Settings -> Secrets and variables -> Actions):
+#   VERCEL_TOKEN       Personal token from https://vercel.com/account/tokens
+#   VERCEL_ORG_ID      Found in .vercel/project.json after `vercel link`
+#   VERCEL_PROJECT_ID  Same file
+
+on:
+  push:
+    branches: [main]
+
+env:
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 20 }
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel@latest
+
+      - name: Pull Vercel environment
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy
+        run: vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}

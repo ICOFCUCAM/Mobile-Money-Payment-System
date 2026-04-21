@@ -1,40 +1,47 @@
 'use strict';
 
+const crypto = require('crypto');
 const bcrypt = require('bcryptjs');
 const { v4: uuid } = require('uuid');
-const { getDb, writeAudit } = require('../../core/database');
+const { db, writeAudit } = require('../../core/database');
 const { signToken } = require('../../middleware/auth');
-const { AuthError, ConflictError, ValidationError } = require('../../core/errors');
+const { AuthError, ConflictError, NotFoundError, ValidationError } = require('../../core/errors');
 const { assertEmail, assertEnum, requireFields } = require('../../utils/validators');
 const config = require('../../config');
+const logger = require('../../core/logger');
 
 const ROLES = ['admin', 'bursar', 'auditor'];
 
 async function login({ email, password, schoolSlug }, ip) {
   requireFields({ email, password }, ['email', 'password']);
-  const db = getDb();
-  const school = schoolSlug
-    ? db.prepare('SELECT * FROM schools WHERE slug = ? AND is_active = 1').get(schoolSlug)
-    : db
-        .prepare(
-          `SELECT s.* FROM schools s
-           JOIN users u ON u.school_id = s.id
-           WHERE u.email = ? AND s.is_active = 1
-           LIMIT 1`
-        )
-        .get(String(email).toLowerCase());
+  const emailLc = String(email).toLowerCase();
 
+  let schoolRes;
+  if (schoolSlug) {
+    schoolRes = await db.query('SELECT * FROM schools WHERE slug = $1 AND is_active = TRUE', [schoolSlug]);
+  } else {
+    schoolRes = await db.query(
+      `SELECT s.* FROM schools s
+       JOIN users u ON u.school_id = s.id
+       WHERE u.email = $1 AND s.is_active = TRUE
+       LIMIT 1`,
+      [emailLc]
+    );
+  }
+  const school = schoolRes.rows[0];
   if (!school) throw new AuthError('Invalid credentials');
 
-  const user = db
-    .prepare('SELECT * FROM users WHERE school_id = ? AND email = ? AND is_active = 1')
-    .get(school.id, String(email).toLowerCase());
+  const userRes = await db.query(
+    'SELECT * FROM users WHERE school_id = $1 AND email = $2 AND is_active = TRUE',
+    [school.id, emailLc]
+  );
+  const user = userRes.rows[0];
   if (!user) throw new AuthError('Invalid credentials');
 
   const ok = await bcrypt.compare(password, user.password_hash);
   if (!ok) throw new AuthError('Invalid credentials');
 
-  db.prepare('UPDATE users SET last_login_at = datetime(\'now\') WHERE id = ?').run(user.id);
+  await db.query('UPDATE users SET last_login_at = NOW() WHERE id = $1', [user.id]);
   writeAudit({ schoolId: school.id, userId: user.id, action: 'auth.login', ip });
 
   const token = signToken({ sub: user.id, school_id: school.id, role: user.role });
@@ -51,18 +58,20 @@ async function createUser(schoolId, payload, actor, ip) {
   assertEnum(payload.role, ROLES, 'role');
   if (payload.password.length < 8) throw new ValidationError('Password must be at least 8 characters');
 
-  const db = getDb();
-  const existing = db
-    .prepare('SELECT id FROM users WHERE school_id = ? AND email = ?')
-    .get(schoolId, payload.email.toLowerCase());
-  if (existing) throw new ConflictError('User with that email already exists');
+  const emailLc = payload.email.toLowerCase();
+  const existing = await db.query(
+    'SELECT id FROM users WHERE school_id = $1 AND email = $2',
+    [schoolId, emailLc]
+  );
+  if (existing.rows.length) throw new ConflictError('User with that email already exists');
 
   const passwordHash = await bcrypt.hash(payload.password, config.security.bcryptRounds);
   const id = uuid();
-  db.prepare(
+  await db.query(
     `INSERT INTO users (id, school_id, email, password_hash, full_name, role)
-     VALUES (?, ?, ?, ?, ?, ?)`
-  ).run(id, schoolId, payload.email.toLowerCase(), passwordHash, payload.fullName, payload.role);
+     VALUES ($1, $2, $3, $4, $5, $6)`,
+    [id, schoolId, emailLc, passwordHash, payload.fullName, payload.role]
+  );
 
   writeAudit({
     schoolId,
@@ -74,13 +83,150 @@ async function createUser(schoolId, payload, actor, ip) {
     ip
   });
 
-  return { id, email: payload.email.toLowerCase(), role: payload.role, fullName: payload.fullName };
+  return { id, email: emailLc, role: payload.role, fullName: payload.fullName };
 }
 
-function listUsers(schoolId) {
-  return getDb()
-    .prepare('SELECT id, email, full_name, role, is_active, last_login_at, created_at FROM users WHERE school_id = ?')
-    .all(schoolId);
+async function listUsers(schoolId) {
+  const res = await db.query(
+    'SELECT id, email, full_name, role, is_active, last_login_at, created_at FROM users WHERE school_id = $1',
+    [schoolId]
+  );
+  return res.rows;
 }
 
-module.exports = { login, createUser, listUsers, ROLES };
+function hashToken(tok) {
+  return crypto.createHash('sha256').update(tok).digest('hex');
+}
+
+/**
+ * Start a password reset. Always returns ok — never leaks whether the account exists.
+ * The plaintext token is returned only in dev (when no mail service is wired) so the
+ * caller can surface it in the response for testing. In production, integrate with
+ * SendGrid/Postmark/etc. and remove the token from the response body.
+ */
+async function requestPasswordReset({ email, schoolSlug }, ip) {
+  requireFields({ email }, ['email']);
+  const emailLc = String(email).toLowerCase();
+
+  let userRes;
+  if (schoolSlug) {
+    userRes = await db.query(
+      `SELECT u.* FROM users u
+       JOIN schools s ON s.id = u.school_id
+       WHERE u.email = $1 AND s.slug = $2 AND u.is_active = TRUE AND s.is_active = TRUE`,
+      [emailLc, schoolSlug]
+    );
+  } else {
+    userRes = await db.query(
+      `SELECT u.* FROM users u
+       JOIN schools s ON s.id = u.school_id
+       WHERE u.email = $1 AND u.is_active = TRUE AND s.is_active = TRUE
+       LIMIT 1`,
+      [emailLc]
+    );
+  }
+  const user = userRes.rows[0];
+
+  // Always return ok — don't leak whether the account exists.
+  if (!user) return { ok: true };
+
+  // Invalidate any prior unused tokens for this user.
+  await db.query(
+    `UPDATE password_resets SET used_at = NOW()
+       WHERE user_id = $1 AND used_at IS NULL`,
+    [user.id]
+  );
+
+  const token = `prt_${crypto.randomBytes(24).toString('hex')}`;
+  const id = uuid();
+  const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+  await db.query(
+    `INSERT INTO password_resets (id, user_id, token_hash, expires_at)
+     VALUES ($1, $2, $3, $4)`,
+    [id, user.id, hashToken(token), expiresAt]
+  );
+
+  writeAudit({
+    schoolId: user.school_id,
+    userId: user.id,
+    action: 'auth.request_password_reset',
+    entity: 'password_reset',
+    entityId: id,
+    ip
+  });
+
+  // TODO: integrate a real mail service and remove the token from the response.
+  logger.info(`Password reset token issued for ${emailLc} (expires ${expiresAt.toISOString()})`);
+
+  const exposeToken = process.env.PASSWORD_RESET_EXPOSE_TOKEN === '1';
+  return exposeToken ? { ok: true, token } : { ok: true };
+}
+
+/**
+ * Complete a password reset: verify the token, update the password, invalidate the token.
+ */
+async function resetPassword({ token, newPassword }, ip) {
+  requireFields({ token, newPassword }, ['token', 'newPassword']);
+  if (newPassword.length < 8) throw new ValidationError('Password must be at least 8 characters');
+
+  const res = await db.query(
+    `SELECT pr.*, u.school_id FROM password_resets pr
+       JOIN users u ON u.id = pr.user_id
+      WHERE pr.token_hash = $1 AND pr.used_at IS NULL AND pr.expires_at > NOW()`,
+    [hashToken(token)]
+  );
+  const row = res.rows[0];
+  if (!row) throw new AuthError('Invalid or expired reset token');
+
+  const passwordHash = await bcrypt.hash(newPassword, config.security.bcryptRounds);
+  await db.withTransaction(async (client) => {
+    await client.query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, row.user_id]);
+    await client.query('UPDATE password_resets SET used_at = NOW() WHERE id = $1', [row.id]);
+  });
+
+  writeAudit({
+    schoolId: row.school_id,
+    userId: row.user_id,
+    action: 'auth.reset_password',
+    entity: 'user',
+    entityId: row.user_id,
+    ip
+  });
+  return { ok: true };
+}
+
+async function changePassword(userId, { currentPassword, newPassword }, ip) {
+  requireFields({ currentPassword, newPassword }, ['currentPassword', 'newPassword']);
+  if (newPassword.length < 8) throw new ValidationError('Password must be at least 8 characters');
+
+  const res = await db.query('SELECT * FROM users WHERE id = $1', [userId]);
+  const user = res.rows[0];
+  if (!user) throw new NotFoundError('User not found');
+
+  const ok = await bcrypt.compare(currentPassword, user.password_hash);
+  if (!ok) throw new AuthError('Current password is incorrect');
+
+  const passwordHash = await bcrypt.hash(newPassword, config.security.bcryptRounds);
+  await db.query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, user.id]);
+
+  writeAudit({
+    schoolId: user.school_id,
+    userId: user.id,
+    action: 'auth.change_password',
+    entity: 'user',
+    entityId: user.id,
+    ip
+  });
+  return { ok: true };
+}
+
+module.exports = {
+  login,
+  createUser,
+  listUsers,
+  requestPasswordReset,
+  resetPassword,
+  changePassword,
+  ROLES
+};

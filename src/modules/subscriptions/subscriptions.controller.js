@@ -7,11 +7,11 @@ async function plans(_req, res) {
 }
 
 async function current(req, res) {
-  res.json(service.currentSubscription(req.school.id));
+  res.json(await service.currentSubscription(req.school.id));
 }
 
 async function change(req, res) {
-  const result = service.changePlan(req.school.id, req.body, req.user, req.ip);
+  const result = await service.changePlan(req.school.id, req.body, req.user, req.ip);
   res.json(result);
 }
 

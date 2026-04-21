@@ -1,6 +1,6 @@
 'use strict';
 
-const { getDb } = require('../core/database');
+const { db } = require('../core/database');
 const { AuthError, NotFoundError } = require('../core/errors');
 
 /**
@@ -10,41 +10,41 @@ const { AuthError, NotFoundError } = require('../core/errors');
  *   3. A subdomain on the host (e.g. `schoolA.app.com`).
  *
  * The resolved school is attached as `req.school` and its id as `req.schoolId`.
- * Always runs AFTER auth, so we can cross-check tenant ownership.
  */
-function tenantResolver(req, _res, next) {
-  const db = getDb();
+async function tenantResolver(req, _res, next) {
+  try {
+    if (req.school) {
+      req.schoolId = req.school.id;
+      return next();
+    }
 
-  // 1. Already attached by auth
-  if (req.school) {
-    req.schoolId = req.school.id;
-    return next();
-  }
-
-  // 2. Header override
-  const slugHeader = req.headers['x-school-slug'];
-  if (slugHeader) {
-    const school = db.prepare('SELECT * FROM schools WHERE slug = ? AND is_active = 1').get(slugHeader);
-    if (!school) return next(new NotFoundError('School not found'));
-    req.school = school;
-    req.schoolId = school.id;
-    return next();
-  }
-
-  // 3. Subdomain
-  const host = (req.headers.host || '').split(':')[0];
-  const parts = host.split('.');
-  if (parts.length >= 3) {
-    const slug = parts[0];
-    const school = db.prepare('SELECT * FROM schools WHERE slug = ? AND is_active = 1').get(slug);
-    if (school) {
+    const slugHeader = req.headers['x-school-slug'];
+    if (slugHeader) {
+      const res = await db.query('SELECT * FROM schools WHERE slug = $1 AND is_active = TRUE', [slugHeader]);
+      const school = res.rows[0];
+      if (!school) throw new NotFoundError('School not found');
       req.school = school;
       req.schoolId = school.id;
       return next();
     }
-  }
 
-  return next(new AuthError('Unable to resolve tenant (school)'));
+    const host = (req.headers.host || '').split(':')[0];
+    const parts = host.split('.');
+    if (parts.length >= 3) {
+      const slug = parts[0];
+      const res = await db.query('SELECT * FROM schools WHERE slug = $1 AND is_active = TRUE', [slug]);
+      const school = res.rows[0];
+      if (school) {
+        req.school = school;
+        req.schoolId = school.id;
+        return next();
+      }
+    }
+
+    throw new AuthError('Unable to resolve tenant (school)');
+  } catch (err) {
+    next(err);
+  }
 }
 
 module.exports = tenantResolver;

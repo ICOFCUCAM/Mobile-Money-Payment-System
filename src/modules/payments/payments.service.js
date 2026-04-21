@@ -1,7 +1,7 @@
 'use strict';
 
 const { v4: uuid } = require('uuid');
-const { getDb, writeAudit } = require('../../core/database');
+const { db, writeAudit } = require('../../core/database');
 const { ConflictError, NotFoundError, ValidationError } = require('../../core/errors');
 const { requireFields, assertPositiveInt } = require('../../utils/validators');
 const { getProviderForSchool } = require('../../providers/ProviderFactory');
@@ -13,24 +13,26 @@ const logger = require('../../core/logger');
  *
  * Flow:
  *   1. Validate input (school tenant scope already enforced by middleware).
- *   2. Reject if the same (school, provider, external_id) already exists — stops replay/reuse.
+ *   2. Reject if the same (school, provider, external_id) already exists — stops replay.
  *   3. Call the provider's verifyTransaction().
- *   4. On success: record the transaction and credit the student's balance in one DB transaction.
+ *   4. On success: insert the transaction and credit the student's balance in one DB transaction.
  */
 async function submitTransaction(school, payload, actor, ip) {
   requireFields(payload, ['studentCode', 'provider', 'externalId']);
   const provider = String(payload.provider).toUpperCase();
-  const db = getDb();
 
-  const student = studentsService.findByCode(school.id, payload.studentCode);
+  const student = await studentsService.findByCode(school.id, payload.studentCode);
   if (!student) throw new NotFoundError('Student not found');
 
-  const duplicate = db
-    .prepare('SELECT id, status FROM transactions WHERE school_id = ? AND provider = ? AND external_id = ?')
-    .get(school.id, provider, payload.externalId);
-  if (duplicate) throw new ConflictError(`Transaction ${payload.externalId} already processed (status=${duplicate.status})`);
+  const dup = await db.query(
+    'SELECT id, status FROM transactions WHERE school_id = $1 AND provider = $2 AND external_id = $3',
+    [school.id, provider, payload.externalId]
+  );
+  if (dup.rows.length) {
+    throw new ConflictError(`Transaction ${payload.externalId} already processed (status=${dup.rows[0].status})`);
+  }
 
-  const providerInstance = getProviderForSchool(school.id, provider);
+  const providerInstance = await getProviderForSchool(school.id, provider);
   const verification = await providerInstance.verifyTransaction(payload.externalId);
 
   const amount = verification.amount != null ? assertPositiveInt(verification.amount, 'amount') : null;
@@ -38,20 +40,22 @@ async function submitTransaction(school, payload, actor, ip) {
 
   if (!verification.ok || verification.status !== 'success') {
     const id = uuid();
-    db.prepare(
-      `INSERT INTO transactions (id, school_id, student_id, provider, external_id, amount, currency, status, phone, raw_response)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).run(
-      id,
-      school.id,
-      student.id,
-      provider,
-      payload.externalId,
-      amount || 0,
-      currency,
-      verification.status === 'pending' ? 'pending' : 'failed',
-      verification.phone || null,
-      JSON.stringify(verification.raw || {})
+    await db.query(
+      `INSERT INTO transactions
+        (id, school_id, student_id, provider, external_id, amount, currency, status, phone, raw_response)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+      [
+        id,
+        school.id,
+        student.id,
+        provider,
+        payload.externalId,
+        amount || 0,
+        currency,
+        verification.status === 'pending' ? 'pending' : 'failed',
+        verification.phone || null,
+        JSON.stringify(verification.raw || {})
+      ]
     );
     writeAudit({
       schoolId: school.id,
@@ -68,25 +72,25 @@ async function submitTransaction(school, payload, actor, ip) {
   if (!amount) throw new ValidationError('Provider did not return a valid amount');
 
   const txId = uuid();
-  const tx = db.transaction(() => {
-    db.prepare(
+  await db.withTransaction(async (client) => {
+    await client.query(
       `INSERT INTO transactions
         (id, school_id, student_id, provider, external_id, amount, currency, status, phone, raw_response, verified_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'success', ?, ?, datetime('now'))`
-    ).run(
-      txId,
-      school.id,
-      student.id,
-      provider,
-      payload.externalId,
-      amount,
-      currency,
-      verification.phone || null,
-      JSON.stringify(verification.raw || {})
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 'success', $8, $9, NOW())`,
+      [
+        txId,
+        school.id,
+        student.id,
+        provider,
+        payload.externalId,
+        amount,
+        currency,
+        verification.phone || null,
+        JSON.stringify(verification.raw || {})
+      ]
     );
-    studentsService.creditBalance(school.id, student.id, amount);
+    await studentsService.creditBalance(school.id, student.id, amount, client);
   });
-  tx();
 
   writeAudit({
     schoolId: school.id,
@@ -98,7 +102,9 @@ async function submitTransaction(school, payload, actor, ip) {
     ip
   });
 
-  logger.info(`Transaction verified: ${provider}/${payload.externalId} school=${school.slug} amount=${amount} ${currency}`);
+  logger.info(
+    `Transaction verified: ${provider}/${payload.externalId} school=${school.slug} amount=${amount} ${currency}`
+  );
 
   return getTransaction(school.id, txId);
 }
@@ -107,62 +113,66 @@ async function submitTransaction(school, payload, actor, ip) {
  * Record a transaction received via webhook. Idempotent.
  * Returns { created: boolean, transaction }.
  */
-function recordWebhookTransaction(school, provider, event, rawBody) {
+async function recordWebhookTransaction(school, provider, event, rawBody) {
   if (!event.externalId) throw new ValidationError('Webhook missing external id');
-  const db = getDb();
 
-  const existing = db
-    .prepare('SELECT * FROM transactions WHERE school_id = ? AND provider = ? AND external_id = ?')
-    .get(school.id, provider, event.externalId);
+  const existingRes = await db.query(
+    'SELECT * FROM transactions WHERE school_id = $1 AND provider = $2 AND external_id = $3',
+    [school.id, provider, event.externalId]
+  );
+  const existing = existingRes.rows[0];
+
   if (existing) {
-    // If we already marked it success, no-op. Otherwise, promote to success if the webhook says so.
     if (existing.status === 'success' || event.status !== 'success') {
       return { created: false, transaction: existing };
     }
-    const student = db.prepare('SELECT * FROM students WHERE id = ?').get(existing.student_id);
-    const amount = event.amount || existing.amount;
-    const upgradeTx = db.transaction(() => {
-      db.prepare(
-        `UPDATE transactions SET status = 'success', amount = ?, verified_at = datetime('now'), raw_response = ?
-         WHERE id = ?`
-      ).run(amount, rawBody, existing.id);
-      if (student) studentsService.creditBalance(school.id, student.id, amount);
+    const amount = event.amount || Number(existing.amount);
+    await db.withTransaction(async (client) => {
+      await client.query(
+        `UPDATE transactions SET status = 'success', amount = $1, verified_at = NOW(), raw_response = $2
+         WHERE id = $3`,
+        [amount, rawBody, existing.id]
+      );
+      if (existing.student_id) {
+        await studentsService.creditBalance(school.id, existing.student_id, amount, client);
+      }
     });
-    upgradeTx();
-    return { created: false, transaction: db.prepare('SELECT * FROM transactions WHERE id = ?').get(existing.id) };
+    const refreshed = await db.query('SELECT * FROM transactions WHERE id = $1', [existing.id]);
+    return { created: false, transaction: refreshed.rows[0] };
   }
 
   // Try to find a student via phone if present — webhook-first payments may not reference a student code.
   let studentId = null;
   if (event.phone) {
-    const s = db.prepare('SELECT id FROM students WHERE school_id = ? AND phone = ?').get(school.id, event.phone);
-    if (s) studentId = s.id;
+    const sRes = await db.query('SELECT id FROM students WHERE school_id = $1 AND phone = $2', [school.id, event.phone]);
+    if (sRes.rows[0]) studentId = sRes.rows[0].id;
   }
 
   const txId = uuid();
   const amount = event.amount || 0;
-  const tx = db.transaction(() => {
-    db.prepare(
-      `INSERT INTO transactions (id, school_id, student_id, provider, external_id, amount, currency, status, phone, raw_response, verified_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-    ).run(
-      txId,
-      school.id,
-      studentId,
-      provider,
-      event.externalId,
-      amount,
-      event.currency || 'XAF',
-      event.status,
-      event.phone || null,
-      rawBody,
-      event.status === 'success' ? new Date().toISOString() : null
+  await db.withTransaction(async (client) => {
+    await client.query(
+      `INSERT INTO transactions
+        (id, school_id, student_id, provider, external_id, amount, currency, status, phone, raw_response, verified_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+      [
+        txId,
+        school.id,
+        studentId,
+        provider,
+        event.externalId,
+        amount,
+        event.currency || 'XAF',
+        event.status,
+        event.phone || null,
+        rawBody,
+        event.status === 'success' ? new Date() : null
+      ]
     );
     if (event.status === 'success' && studentId && amount > 0) {
-      studentsService.creditBalance(school.id, studentId, amount);
+      await studentsService.creditBalance(school.id, studentId, amount, client);
     }
   });
-  tx();
 
   writeAudit({
     schoolId: school.id,
@@ -172,53 +182,162 @@ function recordWebhookTransaction(school, provider, event, rawBody) {
     metadata: { provider, externalId: event.externalId, status: event.status, amount }
   });
 
-  return { created: true, transaction: db.prepare('SELECT * FROM transactions WHERE id = ?').get(txId) };
+  const inserted = await db.query('SELECT * FROM transactions WHERE id = $1', [txId]);
+  return { created: true, transaction: inserted.rows[0] };
 }
 
-function getTransaction(schoolId, id) {
-  const row = getDb()
-    .prepare('SELECT * FROM transactions WHERE school_id = ? AND id = ?')
-    .get(schoolId, id);
+async function getTransaction(schoolId, id) {
+  const res = await db.query('SELECT * FROM transactions WHERE school_id = $1 AND id = $2', [schoolId, id]);
+  const row = res.rows[0];
   if (!row) throw new NotFoundError('Transaction not found');
   return row;
 }
 
-function listTransactions(schoolId, { status, provider, studentId, limit = 100, offset = 0 } = {}) {
+async function listTransactions(schoolId, { status, provider, studentId, limit = 100, offset = 0 } = {}) {
   const args = [schoolId];
-  let where = 'school_id = ?';
+  let where = 'school_id = $1';
   if (status) {
-    where += ' AND status = ?';
     args.push(status);
+    where += ` AND status = $${args.length}`;
   }
   if (provider) {
-    where += ' AND provider = ?';
     args.push(String(provider).toUpperCase());
+    where += ` AND provider = $${args.length}`;
   }
   if (studentId) {
-    where += ' AND student_id = ?';
     args.push(studentId);
+    where += ` AND student_id = $${args.length}`;
   }
-  args.push(Number(limit), Number(offset));
-  return getDb()
-    .prepare(`SELECT * FROM transactions WHERE ${where} ORDER BY created_at DESC LIMIT ? OFFSET ?`)
-    .all(...args);
+  args.push(Math.min(Number(limit) || 100, 500));
+  args.push(Math.max(Number(offset) || 0, 0));
+  const res = await db.query(
+    `SELECT * FROM transactions WHERE ${where} ORDER BY created_at DESC LIMIT $${args.length - 1} OFFSET $${args.length}`,
+    args
+  );
+  return res.rows;
 }
 
-function summary(schoolId) {
-  const db = getDb();
-  const totals = db
-    .prepare(
-      `SELECT
-         COUNT(*) AS total,
-         SUM(CASE WHEN status='success' THEN 1 ELSE 0 END) AS success,
-         SUM(CASE WHEN status='pending' THEN 1 ELSE 0 END) AS pending,
-         SUM(CASE WHEN status='failed'  THEN 1 ELSE 0 END) AS failed,
-         COALESCE(SUM(CASE WHEN status='success' THEN amount ELSE 0 END), 0) AS amount_collected
-       FROM transactions WHERE school_id = ?`
-    )
-    .get(schoolId);
-  const students = db.prepare('SELECT COUNT(*) AS c FROM students WHERE school_id = ?').get(schoolId).c;
-  return { ...totals, students };
+async function summary(schoolId) {
+  const totalsRes = await db.query(
+    `SELECT
+       COUNT(*)::int AS total,
+       COUNT(*) FILTER (WHERE status='success')::int AS success,
+       COUNT(*) FILTER (WHERE status='pending')::int AS pending,
+       COUNT(*) FILTER (WHERE status='failed')::int AS failed,
+       COALESCE(SUM(CASE WHEN status='success' THEN amount ELSE 0 END), 0)::bigint AS amount_collected
+     FROM transactions WHERE school_id = $1`,
+    [schoolId]
+  );
+  const studentsRes = await db.query('SELECT COUNT(*)::int AS c FROM students WHERE school_id = $1', [schoolId]);
+  const r = totalsRes.rows[0];
+  return {
+    total: r.total,
+    success: r.success,
+    pending: r.pending,
+    failed: r.failed,
+    amount_collected: Number(r.amount_collected),
+    students: studentsRes.rows[0].c
+  };
+}
+
+/**
+ * Reverse a previously-successful transaction. Debits the student's balance
+ * by the original amount and marks the transaction as `reversed`. Idempotent —
+ * re-reversing a reversed transaction is a no-op.
+ */
+async function reverseTransaction(school, transactionId, { reason } = {}, actor, ip) {
+  const txRes = await db.query(
+    'SELECT * FROM transactions WHERE school_id = $1 AND id = $2',
+    [school.id, transactionId]
+  );
+  const tx = txRes.rows[0];
+  if (!tx) throw new NotFoundError('Transaction not found');
+  if (tx.status === 'reversed') return tx;
+  if (tx.status !== 'success') {
+    throw new ValidationError(`Only successful transactions can be reversed (got "${tx.status}")`);
+  }
+
+  await db.withTransaction(async (client) => {
+    await client.query(
+      `UPDATE transactions SET status = 'reversed', updated_at = NOW() WHERE id = $1`,
+      [tx.id]
+    );
+    if (tx.student_id) {
+      await studentsService.creditBalance(school.id, tx.student_id, -Number(tx.amount), client);
+    }
+  });
+
+  writeAudit({
+    schoolId: school.id,
+    userId: actor && actor.id,
+    action: 'payment.reversed',
+    entity: 'transaction',
+    entityId: tx.id,
+    metadata: { amount: tx.amount, reason: reason || null },
+    ip
+  });
+
+  logger.info(`Transaction reversed: ${tx.provider}/${tx.external_id} school=${school.slug} amount=${tx.amount}`);
+
+  return getTransaction(school.id, tx.id);
+}
+
+/**
+ * Reconcile pending transactions by re-polling each provider for status.
+ * Intended to be called by a cron job every few minutes. Returns counts.
+ */
+async function reconcilePending(school, { limit = 50 } = {}) {
+  const pending = await db.query(
+    `SELECT * FROM transactions
+       WHERE school_id = $1 AND status = 'pending'
+       ORDER BY created_at ASC
+       LIMIT $2`,
+    [school.id, Math.min(Number(limit) || 50, 500)]
+  );
+
+  const counts = { checked: pending.rows.length, success: 0, failed: 0, stillPending: 0, errored: 0 };
+
+  for (const tx of pending.rows) {
+    try {
+      const provider = await getProviderForSchool(school.id, tx.provider);
+      const v = await provider.verifyTransaction(tx.external_id);
+      if (v.ok && v.status === 'success') {
+        const amount = v.amount != null ? Number(v.amount) : Number(tx.amount);
+        await db.withTransaction(async (client) => {
+          await client.query(
+            `UPDATE transactions SET status = 'success', amount = $1, verified_at = NOW(),
+                                     raw_response = $2, updated_at = NOW()
+             WHERE id = $3`,
+            [amount, JSON.stringify(v.raw || {}), tx.id]
+          );
+          if (tx.student_id) {
+            await studentsService.creditBalance(school.id, tx.student_id, amount, client);
+          }
+        });
+        counts.success += 1;
+      } else if (v.status === 'failed') {
+        await db.query(
+          `UPDATE transactions SET status = 'failed', raw_response = $1, updated_at = NOW()
+           WHERE id = $2`,
+          [JSON.stringify(v.raw || {}), tx.id]
+        );
+        counts.failed += 1;
+      } else {
+        counts.stillPending += 1;
+      }
+    } catch (err) {
+      logger.warn(`Reconciliation failed for tx ${tx.id}`, err.message);
+      counts.errored += 1;
+    }
+  }
+
+  writeAudit({
+    schoolId: school.id,
+    action: 'payment.reconcile',
+    metadata: counts
+  });
+
+  return counts;
 }
 
 module.exports = {
@@ -226,5 +345,7 @@ module.exports = {
   recordWebhookTransaction,
   getTransaction,
   listTransactions,
-  summary
+  summary,
+  reverseTransaction,
+  reconcilePending
 };

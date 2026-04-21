@@ -1,5 +1,6 @@
 (function () {
   const app = document.getElementById('app');
+  const toastsEl = document.getElementById('toasts');
   const routes = {};
   let current = {};
 
@@ -12,6 +13,94 @@
       ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])
     );
   }
+
+  /**
+   * Show an ephemeral toast. `type` is 'success' | 'error' | 'warn' | 'info'.
+   * Auto-dismisses after `ms` (default 4s). Click to dismiss early.
+   */
+  function toast(message, type = 'info', { title, ms = 4000 } = {}) {
+    if (!toastsEl) return;
+    const el = document.createElement('div');
+    el.className = `toast ${type}`;
+    el.innerHTML = `
+      ${title ? `<div class="title">${escape(title)}</div>` : ''}
+      <div class="msg">${escape(message)}</div>
+    `;
+    el.addEventListener('click', () => el.remove());
+    toastsEl.appendChild(el);
+    if (ms > 0) setTimeout(() => el.remove(), ms);
+  }
+
+  /**
+   * Run `fn` and toast any thrown error. Returns the fn's return value, or
+   * `undefined` if it threw. Keeps callers tidy.
+   */
+  async function tryAction(fn, { errorTitle = 'Something went wrong' } = {}) {
+    try { return await fn(); }
+    catch (err) { toast(err.message || 'Unexpected error', 'error', { title: errorTitle }); }
+  }
+
+  /**
+   * Show a blocking confirmation modal. Resolves to true if the user confirmed,
+   * false otherwise. Useful for destructive actions (delete, reverse, rotate).
+   */
+  function confirmDialog({ title = 'Are you sure?', body = '', confirmText = 'Confirm', danger = false } = {}) {
+    return new Promise((resolve) => {
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-overlay';
+      overlay.innerHTML = `
+        <div class="modal" role="dialog" aria-modal="true">
+          <h2>${escape(title)}</h2>
+          <div style="margin-bottom:16px;">${body}</div>
+          <div class="row" style="justify-content:flex-end;">
+            <button class="secondary shrink" data-action="cancel">Cancel</button>
+            <button class="${danger ? 'danger' : ''} shrink" data-action="confirm">${escape(confirmText)}</button>
+          </div>
+        </div>`;
+      const done = (value) => { overlay.remove(); resolve(value); };
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) done(false);
+        const action = e.target.getAttribute && e.target.getAttribute('data-action');
+        if (action === 'cancel') done(false);
+        if (action === 'confirm') done(true);
+      });
+      document.body.appendChild(overlay);
+      overlay.querySelector('[data-action="confirm"]').focus();
+    });
+  }
+
+  /**
+   * Render a simple Prev/Next pager. `page` is 1-based. `hasMore` is typically
+   * `rows.length === pageSize`. `basePath` is the route to navigate to, and
+   * `extraParams` carries any non-page filters so we don't drop them.
+   */
+  function pagerHtml({ page, hasMore, pageSize, rowCount, basePath, extraParams = {} }) {
+    const mk = (p) => {
+      const qs = new URLSearchParams({ ...extraParams, page: String(p) });
+      return `${basePath}?${qs.toString()}`;
+    };
+    const start = rowCount === 0 ? 0 : (page - 1) * pageSize + 1;
+    const end = (page - 1) * pageSize + rowCount;
+    return `
+      <div class="pagination">
+        <span class="muted">${rowCount === 0 ? 'No results' : `${start}–${end}`}</span>
+        <button class="secondary small" ${page <= 1 ? 'disabled' : ''} data-page="${page - 1}">← Prev</button>
+        <button class="secondary small" ${!hasMore ? 'disabled' : ''} data-page="${page + 1}">Next →</button>
+      </div>`;
+    // Note: the caller wires click handlers that read data-page and call navigate(mk(p)).
+  }
+
+  function bindPager(containerSelector, basePath, extraParams) {
+    document.querySelectorAll(`${containerSelector} button[data-page]`).forEach((b) => {
+      b.addEventListener('click', () => {
+        const p = Number(b.dataset.page);
+        const qs = new URLSearchParams({ ...extraParams, page: String(p) });
+        navigate(`${basePath}?${qs.toString()}`);
+      });
+    });
+  }
+
+  window.__ui = { toast, tryAction, confirmDialog, pagerHtml, bindPager };
 
   function moneyFmt(amount, currency) {
     return `${Number(amount || 0).toLocaleString()} ${currency || ''}`.trim();
@@ -56,16 +145,17 @@
       const data = Object.fromEntries(new FormData(e.target).entries());
       try {
         const res = await Api.post('/schools/register', data);
+        toast('School created. Save the API key — shown only once.', 'success', { title: `Welcome to ${res.school.name}` });
         render(`
           <div class="card" style="max-width:640px;margin:40px auto;">
             <h1>Welcome to ${escape(res.school.name)}!</h1>
-            <div class="alert success">Your school has been created. Save the API key below — it is shown only once.</div>
+            <div class="alert success">Save the API key below — it is shown only once.</div>
             <label class="muted">API key</label>
             <pre>${escape(res.apiKey)}</pre>
             <a class="btn" href="#/login">Continue to login</a>
           </div>`);
       } catch (err) {
-        document.getElementById('err').innerHTML = `<div class="alert">${escape(err.message)}</div>`;
+        toast(err.message, 'error', { title: 'Registration failed' });
       }
     });
   });
@@ -81,6 +171,7 @@
           <div id="err"></div>
           <button type="submit">Sign in</button>
           <a href="#/register" style="margin-left:10px;">Register new school</a>
+          <a href="#/forgot" style="margin-left:10px;">Forgot password?</a>
         </form>
       </div>`);
     document.getElementById('f').addEventListener('submit', async (e) => {
@@ -90,9 +181,72 @@
       try {
         const res = await Api.post('/auth/login', data);
         Api.setToken(res.token);
+        current = {};
+        toast(`Signed in as ${res.user.email}`, 'success');
         navigate('#/dashboard');
       } catch (err) {
-        document.getElementById('err').innerHTML = `<div class="alert">${escape(err.message)}</div>`;
+        toast(err.message, 'error', { title: 'Login failed' });
+      }
+    });
+  });
+
+  route('#/forgot', async () => {
+    render(`
+      <div class="card" style="max-width:420px;margin:40px auto;">
+        <h1>Forgot password</h1>
+        <p class="muted">Enter your email. If an account exists, we'll issue a reset token that's valid for 1 hour.</p>
+        <form id="f">
+          <div class="field"><label>Email</label><input name="email" type="email" required></div>
+          <div class="field"><label>School slug (optional)</label><input name="schoolSlug"></div>
+          <button type="submit">Send reset link</button>
+          <a href="#/login" style="margin-left:10px;">Back to login</a>
+        </form>
+        <div id="devToken" style="margin-top:14px;"></div>
+      </div>`);
+    document.getElementById('f').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(e.target).entries());
+      if (!data.schoolSlug) delete data.schoolSlug;
+      try {
+        const res = await Api.post('/auth/password-reset/request', data);
+        toast('If the account exists, a reset link has been issued.', 'success');
+        // When the server is configured with PASSWORD_RESET_EXPOSE_TOKEN=1 (dev mode),
+        // it returns the plaintext token in the response so we can surface a one-click link.
+        if (res && res.token) {
+          const link = `${location.origin}/#/reset?token=${encodeURIComponent(res.token)}`;
+          document.getElementById('devToken').innerHTML = `
+            <div class="alert warn"><b>Dev mode:</b> server returned the reset token directly.
+              <div style="margin-top:6px;"><a href="${link}">Open reset link</a></div>
+              <pre style="margin-top:6px;">${escape(res.token)}</pre>
+            </div>`;
+        }
+      } catch (err) {
+        toast(err.message, 'error', { title: 'Request failed' });
+      }
+    });
+  });
+
+  route('#/reset', async (params) => {
+    const token = (params && params.get('token')) || '';
+    render(`
+      <div class="card" style="max-width:420px;margin:40px auto;">
+        <h1>Reset password</h1>
+        <form id="f">
+          <div class="field"><label>Reset token</label><input name="token" value="${escape(token)}" required></div>
+          <div class="field"><label>New password (min 8 chars)</label><input name="newPassword" type="password" minlength="8" required></div>
+          <button type="submit">Set new password</button>
+          <a href="#/login" style="margin-left:10px;">Back to login</a>
+        </form>
+      </div>`);
+    document.getElementById('f').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(e.target).entries());
+      try {
+        await Api.post('/auth/password-reset/confirm', data);
+        toast('Password updated. Please sign in.', 'success');
+        navigate('#/login');
+      } catch (err) {
+        toast(err.message, 'error', { title: 'Reset failed' });
       }
     });
   });
@@ -110,6 +264,7 @@
         <a href="#/payments" class="${active==='payments'?'active':''}">Payments</a>
         <a href="#/configs" class="${active==='configs'?'active':''}">Providers</a>
         <a href="#/subscription" class="${active==='subscription'?'active':''}">Subscription</a>
+        <a href="#/settings" class="${active==='settings'?'active':''}">Settings</a>
       </div>
       ${body}`;
   }
@@ -151,11 +306,17 @@
     document.getElementById('logout').onclick = logout;
   });
 
-  route('#/students', async () => {
+  route('#/students', async (params) => {
     if (!protect()) return;
     await loadMe();
-    const res = await Api.get('/students?limit=200');
-    const rows = (res.students || []).map((s) => `
+    const q = (params && params.get('q')) || '';
+    const page = Math.max(1, Number((params && params.get('page')) || '1'));
+    const pageSize = 50;
+    const listQs = new URLSearchParams({ limit: String(pageSize), offset: String((page - 1) * pageSize) });
+    if (q) listQs.set('q', q);
+    const res = await Api.get('/students?' + listQs.toString());
+    const students = res.students || [];
+    const rows = students.map((s) => `
       <tr><td>${escape(s.student_code)}</td><td>${escape(s.full_name)}</td><td>${escape(s.class_name||'')}</td><td>${moneyFmt(s.balance, s.currency)}</td></tr>`).join('');
     const body = `
       <div class="card">
@@ -167,30 +328,78 @@
           <div class="field"><label>Phone</label><input name="phone"></div>
           <div class="field" style="flex:0;"><label>&nbsp;</label><button type="submit">Add</button></div>
         </form>
-        <div id="err"></div>
       </div>
       <div class="card">
-        <h2>Students</h2>
+        <div class="toolbar">
+          <h2 style="margin:0;">Students</h2>
+          <form id="searchForm" class="row" style="flex:0; min-width:260px;">
+            <input name="q" value="${escape(q)}" placeholder="Search name or code…">
+            <button class="secondary small shrink" type="submit">Search</button>
+            ${q ? `<a href="#/students" class="secondary btn small shrink" style="text-decoration:none;">Clear</a>` : ''}
+          </form>
+        </div>
         <table><thead><tr><th>Code</th><th>Name</th><th>Class</th><th>Balance</th></tr></thead>
-          <tbody>${rows || '<tr><td colspan=4 class="muted">No students yet.</td></tr>'}</tbody></table>
+          <tbody>${rows || `<tr><td colspan=4 class="muted">${q ? `No students match "${escape(q)}"` : 'No students yet.'}</td></tr>`}</tbody></table>
+        ${pagerHtml({
+          page,
+          hasMore: students.length === pageSize,
+          pageSize,
+          rowCount: students.length,
+          basePath: '#/students',
+          extraParams: q ? { q } : {}
+        })}
       </div>`;
     render(shell('students', body));
     document.getElementById('logout').onclick = logout;
     document.getElementById('f').addEventListener('submit', async (e) => {
       e.preventDefault();
       const data = Object.fromEntries(new FormData(e.target).entries());
-      try { await Api.post('/students', data); navigate('#/students'); location.reload(); }
-      catch (err) { document.getElementById('err').innerHTML = `<div class="alert">${escape(err.message)}</div>`; }
+      try {
+        const r = await Api.post('/students', data);
+        toast(`Added ${r.student.full_name}`, 'success');
+        location.reload();
+      } catch (err) {
+        toast(err.message, 'error', { title: 'Could not add student' });
+      }
     });
+    document.getElementById('searchForm').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const val = e.target.elements.q.value.trim();
+      navigate(val ? `#/students?q=${encodeURIComponent(val)}` : '#/students');
+    });
+    bindPager('.pagination', '#/students', q ? { q } : {});
   });
 
-  route('#/payments', async () => {
+  route('#/payments', async (params) => {
     if (!protect()) return;
     await loadMe();
-    const [txList, configs] = await Promise.all([Api.get('/payments?limit=100'), Api.get('/schools/me/payment-configs')]);
+    const statusFilter = (params && params.get('status')) || '';
+    const providerFilter = (params && params.get('provider')) || '';
+    const page = Math.max(1, Number((params && params.get('page')) || '1'));
+    const pageSize = 50;
+    const listQs = new URLSearchParams({ limit: String(pageSize), offset: String((page - 1) * pageSize) });
+    if (statusFilter) listQs.set('status', statusFilter);
+    if (providerFilter) listQs.set('provider', providerFilter);
+    const [txList, configs] = await Promise.all([
+      Api.get('/payments?' + listQs.toString()),
+      Api.get('/schools/me/payment-configs')
+    ]);
     const providers = (configs.configs || []).filter((c) => c.is_active).map((c) => c.provider);
+    const isAdmin = current.user && current.user.role === 'admin';
+    const canReconcile = current.user && (current.user.role === 'admin' || current.user.role === 'bursar');
     const rows = (txList.transactions || []).map((t) => `
-      <tr><td>${escape(t.created_at)}</td><td>${escape(t.provider)}</td><td>${escape(t.external_id)}</td><td>${moneyFmt(t.amount, t.currency)}</td><td>${statusBadge(t.status)}</td></tr>`).join('');
+      <tr>
+        <td>${escape(t.created_at)}</td>
+        <td>${escape(t.provider)}</td>
+        <td>${escape(t.external_id)}</td>
+        <td>${moneyFmt(t.amount, t.currency)}</td>
+        <td>${statusBadge(t.status)}</td>
+        <td style="text-align:right;">${
+          isAdmin && t.status === 'success'
+            ? `<button class="secondary small reverse" data-id="${escape(t.id)}" data-ref="${escape(t.external_id)}" data-amount="${escape(t.amount)}" data-currency="${escape(t.currency)}">Reverse</button>`
+            : ''
+        }</td>
+      </tr>`).join('');
     const body = `
       <div class="card">
         <h2>Submit payment for verification</h2>
@@ -205,20 +414,129 @@
           <div class="field"><label>Transaction ID</label><input name="externalId" required></div>
           <div class="field" style="flex:0;"><label>&nbsp;</label><button type="submit">Verify</button></div>
         </form>
-        <div id="err"></div>
       </div>
       <div class="card">
-        <h2>Transactions</h2>
-        <table><thead><tr><th>Date</th><th>Provider</th><th>Ref</th><th>Amount</th><th>Status</th></tr></thead>
-          <tbody>${rows || '<tr><td colspan=5 class="muted">No transactions yet.</td></tr>'}</tbody></table>
+        <div class="toolbar">
+          <h2 style="margin:0;">Transactions</h2>
+          <select id="statusFilter">
+            <option value="" ${statusFilter===''?'selected':''}>All statuses</option>
+            <option value="pending" ${statusFilter==='pending'?'selected':''}>Pending</option>
+            <option value="success" ${statusFilter==='success'?'selected':''}>Success</option>
+            <option value="failed" ${statusFilter==='failed'?'selected':''}>Failed</option>
+            <option value="reversed" ${statusFilter==='reversed'?'selected':''}>Reversed</option>
+          </select>
+          <select id="providerFilter">
+            <option value="" ${providerFilter===''?'selected':''}>All providers</option>
+            ${providers.map((p) => `<option value="${escape(p)}" ${providerFilter===p?'selected':''}>${escape(p)}</option>`).join('')}
+          </select>
+          <div class="spacer"></div>
+          ${canReconcile ? '<button class="secondary small" id="reconcile">Reconcile pending</button>' : ''}
+          <button class="secondary small" id="exportCsv">Export CSV</button>
+        </div>
+        <table><thead><tr><th>Date</th><th>Provider</th><th>Ref</th><th>Amount</th><th>Status</th><th></th></tr></thead>
+          <tbody>${rows || `<tr><td colspan=6 class="muted">${statusFilter||providerFilter ? 'No transactions match this filter.' : 'No transactions yet.'}</td></tr>`}</tbody></table>
+        ${pagerHtml({
+          page,
+          hasMore: (txList.transactions || []).length === pageSize,
+          pageSize,
+          rowCount: (txList.transactions || []).length,
+          basePath: '#/payments',
+          extraParams: {
+            ...(statusFilter ? { status: statusFilter } : {}),
+            ...(providerFilter ? { provider: providerFilter } : {})
+          }
+        })}
       </div>`;
     render(shell('payments', body));
     document.getElementById('logout').onclick = logout;
     document.getElementById('f').addEventListener('submit', async (e) => {
       e.preventDefault();
       const data = Object.fromEntries(new FormData(e.target).entries());
-      try { await Api.post('/payments', data); location.reload(); }
-      catch (err) { document.getElementById('err').innerHTML = `<div class="alert">${escape(err.message)}</div>`; }
+      try {
+        const r = await Api.post('/payments', data);
+        toast(`Verified & credited ${moneyFmt(r.transaction.amount, r.transaction.currency)}`, 'success', { title: 'Payment posted' });
+        location.reload();
+      } catch (err) {
+        toast(err.message, 'error', { title: 'Payment verification failed' });
+      }
+    });
+    function applyFilters() {
+      const qs = new URLSearchParams();
+      const s = document.getElementById('statusFilter').value;
+      const p = document.getElementById('providerFilter').value;
+      if (s) qs.set('status', s);
+      if (p) qs.set('provider', p);
+      const str = qs.toString();
+      navigate(str ? `#/payments?${str}` : '#/payments');
+    }
+    document.getElementById('statusFilter').addEventListener('change', applyFilters);
+    document.getElementById('providerFilter').addEventListener('change', applyFilters);
+    bindPager('.pagination', '#/payments', {
+      ...(statusFilter ? { status: statusFilter } : {}),
+      ...(providerFilter ? { provider: providerFilter } : {})
+    });
+
+    const reconcileBtn = document.getElementById('reconcile');
+    if (reconcileBtn) {
+      reconcileBtn.addEventListener('click', async () => {
+        reconcileBtn.disabled = true;
+        const original = reconcileBtn.textContent;
+        reconcileBtn.innerHTML = '<span class="spinner"></span> Reconciling…';
+        try {
+          const r = await Api.post('/payments/reconcile?limit=50');
+          toast(
+            `Checked ${r.checked}: ${r.success} succeeded, ${r.failed} failed, ${r.stillPending} still pending` +
+              (r.errored ? `, ${r.errored} errored` : ''),
+            r.errored ? 'warn' : 'success',
+            { title: 'Reconciliation complete' }
+          );
+          location.reload();
+        } catch (err) {
+          toast(err.message, 'error', { title: 'Reconciliation failed' });
+        } finally {
+          reconcileBtn.disabled = false;
+          reconcileBtn.textContent = original;
+        }
+      });
+    }
+
+    document.getElementById('exportCsv').addEventListener('click', async () => {
+      const btn = document.getElementById('exportCsv');
+      btn.disabled = true;
+      const original = btn.textContent;
+      btn.innerHTML = '<span class="spinner"></span> Exporting…';
+      try {
+        const exportQs = new URLSearchParams({ limit: '10000' });
+        if (statusFilter) exportQs.set('status', statusFilter);
+        if (providerFilter) exportQs.set('provider', providerFilter);
+        const filename = `transactions-${(current.school && current.school.slug) || 'export'}-${new Date().toISOString().slice(0,10)}.csv`;
+        await Api.download('/payments/export.csv?' + exportQs.toString(), filename);
+        toast('CSV exported', 'success');
+      } catch (err) {
+        toast(err.message, 'error', { title: 'Export failed' });
+      } finally {
+        btn.disabled = false;
+        btn.textContent = original;
+      }
+    });
+    document.querySelectorAll('button.reverse').forEach((btn) => {
+      btn.addEventListener('click', async () => {
+        const { id, ref, amount, currency } = btn.dataset;
+        const ok = await confirmDialog({
+          title: 'Reverse transaction?',
+          body: `This will debit the student's balance by <b>${escape(moneyFmt(amount, currency))}</b> and mark transaction <span class="mono">${escape(ref)}</span> as reversed. This cannot be undone from the UI.`,
+          confirmText: 'Reverse',
+          danger: true
+        });
+        if (!ok) return;
+        try {
+          await Api.post(`/payments/${encodeURIComponent(id)}/reverse`, { reason: 'Reversed from dashboard' });
+          toast(`Transaction ${ref} reversed`, 'success');
+          location.reload();
+        } catch (err) {
+          toast(err.message, 'error', { title: 'Reversal failed' });
+        }
+      });
     });
   });
 
@@ -256,8 +574,13 @@
       e.preventDefault();
       const data = Object.fromEntries(new FormData(e.target).entries());
       if (!data.base_url) delete data.base_url;
-      try { await Api.put('/schools/me/payment-configs', data); location.reload(); }
-      catch (err) { document.getElementById('err').innerHTML = `<div class="alert">${escape(err.message)}</div>`; }
+      try {
+        await Api.put('/schools/me/payment-configs', data);
+        toast(`${data.provider} credentials saved (encrypted)`, 'success');
+        location.reload();
+      } catch (err) {
+        toast(err.message, 'error', { title: 'Could not save provider config' });
+      }
     });
   });
 
@@ -287,16 +610,123 @@
     document.getElementById('logout').onclick = logout;
     document.querySelectorAll('button.choose').forEach((b) => {
       b.addEventListener('click', async () => {
-        try { await Api.post('/subscriptions/change', { plan: b.dataset.plan, paymentReference: 'manual' }); location.reload(); }
-        catch (err) { alert(err.message); }
+        try {
+          await Api.post('/subscriptions/change', { plan: b.dataset.plan, paymentReference: 'manual' });
+          toast(`Plan changed to ${b.dataset.plan}`, 'success');
+          location.reload();
+        } catch (err) {
+          toast(err.message, 'error', { title: 'Plan change failed' });
+        }
       });
     });
   });
 
+  route('#/settings', async () => {
+    if (!protect()) return;
+    await loadMe();
+    const school = (await Api.get('/schools/me')).school;
+    const body = `
+      <div class="card">
+        <h2>Profile</h2>
+        <div class="row">
+          <div><label>Email</label><input value="${escape(current.user.email)}" disabled></div>
+          <div><label>Role</label><input value="${escape(current.user.role)}" disabled></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>School</h2>
+        <div class="row">
+          <div><label>Name</label><input value="${escape(school.name)}" disabled></div>
+          <div><label>Slug</label><input value="${escape(school.slug)}" disabled></div>
+          <div><label>Plan</label><input value="${escape(school.subscription_plan)}" disabled></div>
+        </div>
+        <div class="muted">Webhook URL: <span class="mono">${location.origin}/webhooks/&lt;PROVIDER&gt;/${escape(school.slug)}</span></div>
+      </div>
+
+      <div class="card">
+        <h2>Change password</h2>
+        <form id="pwf">
+          <div class="row">
+            <div><label>Current password</label><input name="currentPassword" type="password" required></div>
+            <div><label>New password (min 8)</label><input name="newPassword" type="password" minlength="8" required></div>
+            <div class="shrink"><label>&nbsp;</label><button type="submit">Update</button></div>
+          </div>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>API key</h2>
+        <p class="muted">The plaintext key is only shown at creation or rotation. Only its SHA-256 hash is stored.</p>
+        <button class="secondary" id="rotate">Rotate API key</button>
+        <div id="newkey" style="margin-top:12px;"></div>
+      </div>
+
+      <div class="card" style="border-color: var(--danger);">
+        <h2 style="color: var(--danger);">Danger zone</h2>
+        <p class="muted">Deleting the school is permanent. It cascades: students, transactions, provider configs, users, audit log — all gone.</p>
+        <button class="danger" id="del">Delete this school</button>
+      </div>`;
+    render(shell('settings', body));
+    document.getElementById('logout').onclick = logout;
+
+    document.getElementById('pwf').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const data = Object.fromEntries(new FormData(e.target).entries());
+      try {
+        await Api.post('/auth/change-password', data);
+        toast('Password updated', 'success');
+        e.target.reset();
+      } catch (err) {
+        toast(err.message, 'error', { title: 'Password change failed' });
+      }
+    });
+
+    document.getElementById('rotate').addEventListener('click', async () => {
+      const ok = await confirmDialog({
+        title: 'Rotate API key?',
+        body: 'The current key will stop working immediately. Save the new one — it is shown only once.',
+        confirmText: 'Rotate',
+        danger: true
+      });
+      if (!ok) return;
+      try {
+        const r = await Api.post('/schools/me/api-key/rotate');
+        document.getElementById('newkey').innerHTML = `
+          <div class="alert success">New API key (shown once):</div>
+          <pre>${escape(r.apiKey)}</pre>`;
+        toast('API key rotated', 'success');
+      } catch (err) {
+        toast(err.message, 'error', { title: 'Rotation failed' });
+      }
+    });
+
+    document.getElementById('del').addEventListener('click', async () => {
+      const ok = await confirmDialog({
+        title: 'Delete this school?',
+        body: `This removes <b>${escape(school.name)}</b> and all associated students, transactions, users and provider configs. This cannot be undone.`,
+        confirmText: `Delete ${school.slug}`,
+        danger: true
+      });
+      if (!ok) return;
+      try {
+        await Api.del('/schools/me');
+        toast('School deleted', 'success');
+        Api.setToken(null);
+        current = {};
+        navigate('#/register');
+      } catch (err) {
+        toast(err.message, 'error', { title: 'Deletion failed' });
+      }
+    });
+  });
+
   function dispatch() {
-    const hash = window.location.hash || '#/login';
-    const handler = routes[hash] || routes['#/login'];
-    handler();
+    const raw = window.location.hash || '#/login';
+    const [path, query = ''] = raw.split('?');
+    const params = new URLSearchParams(query);
+    const handler = routes[path] || routes['#/login'];
+    handler(params);
   }
 
   window.addEventListener('hashchange', dispatch);
