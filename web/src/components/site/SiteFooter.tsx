@@ -19,7 +19,7 @@ const COUNTRIES: { name: string; flag: string }[] = [
 ];
 
 export const SiteFooter: React.FC = () => (
-  <footer className="bg-[#0b2e4c] text-slate-200">
+  <footer className="bg-brand-dark text-slate-200">
     <div className="max-w-7xl mx-auto px-6 py-14 grid lg:grid-cols-12 gap-10">
       <div className="lg:col-span-3">
         <div className="flex items-center gap-2 mb-3">

@@ -21,6 +21,22 @@ export default {
     },
     extend: {
       colors: {
+        brand: {
+          DEFAULT: '#0b4d6b',
+          dark:    '#063a52',
+          light:   '#e6f2f6',
+          900:     '#042c3f',
+          800:     '#063a52',
+          700:     '#084361',
+          600:     '#0b4d6b',
+          500:     '#136788',
+          400:     '#3a8cae',
+        },
+        gold: {
+          DEFAULT: '#ffc845',
+          dark:    '#e6a91f',
+          light:   '#fff4d1',
+        },
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
