@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { motion, useInView, useMotionValue, useSpring, useTransform } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -48,6 +49,53 @@ const plans = [
     features: ['Unlimited Providers', 'Unlimited Students', 'White-Label Branding', 'Dedicated Support', 'Custom Integrations', 'SLA Guarantee', 'Audit Logs']
   }
 ];
+
+/**
+ * Scroll-triggered fade-in + slight lift. Only animates once — we don't want
+ * sections re-animating on every scroll past.
+ */
+const FadeIn: React.FC<
+  React.PropsWithChildren<{ delay?: number; className?: string; y?: number }>
+> = ({ children, delay = 0, className, y = 14 }) => (
+  <motion.div
+    initial={{ opacity: 0, y }}
+    whileInView={{ opacity: 1, y: 0 }}
+    viewport={{ once: true, margin: '-60px' }}
+    transition={{ duration: 0.5, delay, ease: 'easeOut' }}
+    className={className}
+  >
+    {children}
+  </motion.div>
+);
+
+/**
+ * Counter that animates from 0 → `to` when scrolled into view.
+ * Respects `prefers-reduced-motion` — jumps straight to the final value.
+ */
+const AnimatedNumber: React.FC<{
+  to: number;
+  prefix?: string;
+  suffix?: string;
+  decimals?: number;
+  className?: string;
+}> = ({ to, prefix = '', suffix = '', decimals = 0, className }) => {
+  const ref = useRef<HTMLSpanElement>(null);
+  const inView = useInView(ref, { once: true, margin: '-40px' });
+  const mv = useMotionValue(0);
+  const spring = useSpring(mv, { duration: 1.4, bounce: 0 });
+  const rounded = useTransform(spring, (v) =>
+    `${prefix}${Number(v).toLocaleString(undefined, {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals
+    })}${suffix}`
+  );
+
+  useEffect(() => {
+    if (inView) mv.set(to);
+  }, [inView, to, mv]);
+
+  return <motion.span ref={ref} className={className}>{rounded}</motion.span>;
+};
 
 const Landing: React.FC = () => {
   const { login, register } = useAuth();
@@ -205,19 +253,25 @@ const Landing: React.FC = () => {
         </div>
       </section>
 
-      {/* Stats strip — light, blue numbers */}
+      {/* Stats strip — light bg, blue counter-up numbers */}
       <section className="border-y border-slate-100 bg-white py-14">
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
           {[
-            { num: '500+',  label: 'Schools Onboarded' },
-            { num: '2.4M+', label: 'Transactions Processed' },
-            { num: '$18M+', label: 'Volume Managed' },
-            { num: '99.9%', label: 'Uptime SLA' }
-          ].map((s) => (
-            <div key={s.label}>
-              <div className="text-4xl md:text-5xl font-bold text-blue-600 tracking-tight">{s.num}</div>
+            { to: 500,  prefix: '', suffix: '+',  decimals: 0, label: 'Schools Onboarded' },
+            { to: 2.4,  prefix: '', suffix: 'M+', decimals: 1, label: 'Transactions Processed' },
+            { to: 18,   prefix: '$', suffix: 'M+', decimals: 0, label: 'Volume Managed' },
+            { to: 99.9, prefix: '', suffix: '%',  decimals: 1, label: 'Uptime SLA' }
+          ].map((s, i) => (
+            <FadeIn key={s.label} delay={i * 0.08}>
+              <AnimatedNumber
+                to={s.to}
+                prefix={s.prefix}
+                suffix={s.suffix}
+                decimals={s.decimals}
+                className="block font-display text-4xl md:text-5xl font-bold text-blue-600 tracking-tight"
+              />
               <div className="text-sm text-slate-500 mt-2">{s.label}</div>
-            </div>
+            </FadeIn>
           ))}
         </div>
       </section>
@@ -225,20 +279,22 @@ const Landing: React.FC = () => {
       {/* Core features — 8 cards, 4×2 */}
       <section id="features" className="bg-slate-50 py-20">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center mb-12">
+          <FadeIn className="text-center mb-12">
             <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 mb-3">Core Features</Badge>
             <h2 className="font-display text-3xl md:text-4xl font-bold">Everything your school needs</h2>
             <p className="mt-3 text-slate-600">From student management to payment reconciliation, built for scale and security.</p>
-          </div>
+          </FadeIn>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {coreFeatures.map((f) => (
-              <Card key={f.title} className="p-5 bg-white border-slate-100 hover:shadow-md transition-shadow">
-                <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center mb-3">
-                  <f.icon className="w-5 h-5 text-blue-600" />
-                </div>
-                <h3 className="font-semibold mb-1.5">{f.title}</h3>
-                <p className="text-sm text-slate-600 leading-relaxed">{f.body}</p>
-              </Card>
+            {coreFeatures.map((f, i) => (
+              <FadeIn key={f.title} delay={i * 0.05}>
+                <Card className="p-5 bg-white border-slate-100 h-full hover:shadow-md hover:-translate-y-0.5 transition-all duration-200">
+                  <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center mb-3">
+                    <f.icon className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <h3 className="font-semibold mb-1.5">{f.title}</h3>
+                  <p className="text-sm text-slate-600 leading-relaxed">{f.body}</p>
+                </Card>
+              </FadeIn>
             ))}
           </div>
         </div>
@@ -247,23 +303,25 @@ const Landing: React.FC = () => {
       {/* Providers */}
       <section id="providers" className="bg-white py-20">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center mb-12">
+          <FadeIn className="text-center mb-12">
             <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 mb-3">Integrated Providers</Badge>
             <h2 className="font-display text-3xl md:text-4xl font-bold">Accept payments from every major network</h2>
-          </div>
+          </FadeIn>
           <div className="grid md:grid-cols-3 gap-5">
-            {providers.map((p) => (
-              <Card key={p.name} className="p-6 border-slate-100">
-                <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${p.grad} flex items-center justify-center mb-4`}>
-                  <CreditCard className="w-5 h-5 text-white" />
-                </div>
-                <h3 className="font-bold text-lg">{p.name}</h3>
-                <div className="text-sm text-slate-500 mt-0.5">{p.users}</div>
-                <p className="text-sm text-slate-600 mt-3 leading-relaxed">{p.blurb}</p>
-                <div className="mt-5 flex items-center gap-1.5 text-xs text-emerald-700 font-medium">
-                  <CheckCircle2 className="w-4 h-4" /> Ready to integrate
-                </div>
-              </Card>
+            {providers.map((p, i) => (
+              <FadeIn key={p.name} delay={i * 0.08}>
+                <Card className="p-6 border-slate-100 h-full hover:shadow-lg hover:-translate-y-0.5 transition-all duration-200">
+                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${p.grad} flex items-center justify-center mb-4`}>
+                    <CreditCard className="w-5 h-5 text-white" />
+                  </div>
+                  <h3 className="font-bold text-lg">{p.name}</h3>
+                  <div className="text-sm text-slate-500 mt-0.5">{p.users}</div>
+                  <p className="text-sm text-slate-600 mt-3 leading-relaxed">{p.blurb}</p>
+                  <div className="mt-5 flex items-center gap-1.5 text-xs text-emerald-700 font-medium">
+                    <CheckCircle2 className="w-4 h-4" /> Ready to integrate
+                  </div>
+                </Card>
+              </FadeIn>
             ))}
           </div>
         </div>
