@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { supabase } from '@/lib/supabase';
+import { Api, type BackendTransaction } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import { formatCurrency, formatDate, providerColors, statusColors } from '@/lib/format';
@@ -22,44 +22,39 @@ const Overview: React.FC<Props> = ({ setPage }) => {
     totalRevenue: 0, pending: 0, failed: 0, studentCount: 0, txnCount: 0,
     mtnTotal: 0, orangeTotal: 0, airtelTotal: 0, verifiedCount: 0
   });
-  const [recent, setRecent] = useState<any[]>([]);
+  const [recent, setRecent] = useState<BackendTransaction[]>([]);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (!school) return;
-    load();
-  }, [school]);
+  useEffect(() => { if (school) load(); /* eslint-disable-line */ }, [school]);
 
   const load = async () => {
-    if (!school) return;
     setLoading(true);
-    const [txnRes, studRes] = await Promise.all([
-      supabase.from('transactions').select('*, students(full_name, student_code)').eq('school_id', school.id).order('created_at', { ascending: false }),
-      supabase.from('students').select('id').eq('school_id', school.id)
-    ]);
-    const txns = txnRes.data || [];
-    const verified = txns.filter((t: any) => t.status === 'verified');
-    const s = {
-      totalRevenue: verified.reduce((a: number, t: any) => a + Number(t.amount), 0),
-      pending: txns.filter((t: any) => t.status === 'pending').reduce((a: number, t: any) => a + Number(t.amount), 0),
-      failed: txns.filter((t: any) => t.status === 'failed').length,
-      studentCount: studRes.data?.length || 0,
-      txnCount: txns.length,
-      verifiedCount: verified.length,
-      mtnTotal: verified.filter((t: any) => t.provider === 'MTN').reduce((a: number, t: any) => a + Number(t.amount), 0),
-      orangeTotal: verified.filter((t: any) => t.provider === 'ORANGE').reduce((a: number, t: any) => a + Number(t.amount), 0),
-      airtelTotal: verified.filter((t: any) => t.provider === 'AIRTEL').reduce((a: number, t: any) => a + Number(t.amount), 0),
-    };
-    setStats(s);
-    setRecent(txns.slice(0, 6));
-    setLoading(false);
+    try {
+      const data = await Api.overview();
+      const providerMap: Record<string, number> = {};
+      for (const p of data.providerBreakdown) providerMap[p.provider] = Number(p.collected);
+      setStats({
+        totalRevenue: Number(data.summary.amount_collected),
+        pending: 0, // backend returns count; keep ui-side computation simple
+        failed: data.summary.failed,
+        studentCount: data.studentCount,
+        txnCount: data.summary.total,
+        verifiedCount: data.summary.success,
+        mtnTotal: providerMap.MTN || 0,
+        orangeTotal: providerMap.ORANGE || 0,
+        airtelTotal: providerMap.AIRTEL || 0
+      });
+      setRecent(data.recentTransactions);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const metrics = [
-    { label: 'Total Revenue', value: formatCurrency(stats.totalRevenue), icon: DollarSign, color: 'from-emerald-500 to-teal-600', change: '+24.5%' },
+    { label: 'Total Revenue', value: formatCurrency(stats.totalRevenue), icon: DollarSign, color: 'from-emerald-500 to-teal-600', change: `${stats.verifiedCount} successful` },
     { label: 'Verified Payments', value: stats.verifiedCount.toString(), icon: CheckCircle2, color: 'from-blue-500 to-indigo-600', change: `${stats.txnCount} total` },
     { label: 'Students', value: stats.studentCount.toString(), icon: Users, color: 'from-purple-500 to-pink-600', change: 'Active' },
-    { label: 'Pending', value: formatCurrency(stats.pending), icon: Clock, color: 'from-amber-500 to-orange-600', change: 'Awaiting verification' },
+    { label: 'Failed', value: stats.failed.toString(), icon: Clock, color: 'from-amber-500 to-orange-600', change: 'Awaiting investigation' },
   ];
 
   return (
@@ -110,7 +105,9 @@ const Overview: React.FC<Props> = ({ setPage }) => {
                   <div className="text-xs text-slate-500">Verified volume</div>
                 </div>
               </div>
-              <Badge className={`bg-${p.color}-100 text-${p.color}-800 hover:bg-${p.color}-100`}>Active</Badge>
+              <Badge className={`bg-${p.color}-100 text-${p.color}-800 hover:bg-${p.color}-100`}>
+                {p.amount > 0 ? 'Active' : 'Idle'}
+              </Badge>
             </div>
             <div className="mt-4 text-2xl font-bold text-slate-900">{formatCurrency(p.amount)}</div>
           </Card>
@@ -131,8 +128,7 @@ const Overview: React.FC<Props> = ({ setPage }) => {
           <table className="w-full text-sm">
             <thead className="bg-slate-50 text-slate-600 text-xs uppercase tracking-wider">
               <tr>
-                <th className="text-left px-5 py-3">Transaction ID</th>
-                <th className="text-left px-5 py-3">Student</th>
+                <th className="text-left px-5 py-3">Transaction Ref</th>
                 <th className="text-left px-5 py-3">Provider</th>
                 <th className="text-right px-5 py-3">Amount</th>
                 <th className="text-left px-5 py-3">Status</th>
@@ -141,20 +137,16 @@ const Overview: React.FC<Props> = ({ setPage }) => {
             </thead>
             <tbody className="divide-y divide-slate-200">
               {loading ? (
-                <tr><td colSpan={6} className="text-center p-8 text-slate-500">Loading...</td></tr>
+                <tr><td colSpan={5} className="text-center p-8 text-slate-500">Loading...</td></tr>
               ) : recent.length === 0 ? (
-                <tr><td colSpan={6} className="text-center p-8 text-slate-500">No transactions yet</td></tr>
+                <tr><td colSpan={5} className="text-center p-8 text-slate-500">No transactions yet</td></tr>
               ) : recent.map((t) => (
                 <tr key={t.id} className="hover:bg-slate-50">
-                  <td className="px-5 py-3 font-mono text-xs text-slate-700">{t.external_txn_id}</td>
-                  <td className="px-5 py-3">
-                    <div className="font-medium text-slate-900">{t.students?.full_name || '—'}</div>
-                    <div className="text-xs text-slate-500">{t.students?.student_code}</div>
-                  </td>
+                  <td className="px-5 py-3 font-mono text-xs text-slate-700">{t.external_id}</td>
                   <td className="px-5 py-3">
                     <Badge variant="outline" className={providerColors[t.provider]}>{t.provider}</Badge>
                   </td>
-                  <td className="px-5 py-3 text-right font-semibold text-slate-900">{formatCurrency(Number(t.amount))}</td>
+                  <td className="px-5 py-3 text-right font-semibold text-slate-900">{formatCurrency(Number(t.amount), t.currency)}</td>
                   <td className="px-5 py-3">
                     <Badge variant="outline" className={statusColors[t.status]}>{t.status}</Badge>
                   </td>

@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { supabase } from '@/lib/supabase';
+import { Api, type BackendStudent, type BackendTransaction } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePermissions } from '@/hooks/usePermissions';
 import { toast } from '@/components/ui/use-toast';
@@ -16,30 +16,29 @@ const VerifyPayment: React.FC = () => {
   const { school } = useAuth();
   const { can, role } = usePermissions();
 
-  const [students, setStudents] = useState<any[]>([]);
-  const [providers, setProviders] = useState<any[]>([]);
+  const [students, setStudents] = useState<BackendStudent[]>([]);
+  const [providers, setProviders] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<{ ok: boolean; message: string; tx?: BackendTransaction } | null>(null);
 
   const [form, setForm] = useState({
-    student_id: '',
+    studentCode: '',
     provider: 'MTN',
-    transaction_id: '',
-    amount: '',
-    phone: ''
+    externalId: ''
   });
 
-  useEffect(() => { if (school) loadData(); }, [school]);
+  useEffect(() => { if (school) loadData(); /* eslint-disable-line */ }, [school]);
 
   const loadData = async () => {
-    if (!school) return;
-    const [sRes, pRes] = await Promise.all([
-      supabase.from('students').select('*').eq('school_id', school.id).order('full_name'),
-      supabase.from('payment_configs').select('*').eq('school_id', school.id).eq('is_active', true)
-    ]);
-    setStudents(sRes.data || []);
-    setProviders(pRes.data || []);
-    if (pRes.data && pRes.data.length > 0) setForm(f => ({ ...f, provider: pRes.data[0].provider }));
+    try {
+      const [sRes, cRes] = await Promise.all([Api.listStudents({ limit: 500 }), Api.listConfigs()]);
+      setStudents(sRes.students);
+      const active = cRes.configs.filter(c => c.is_active).map(c => c.provider);
+      setProviders(active);
+      if (active.length) setForm(f => ({ ...f, provider: active[0] }));
+    } catch (err: any) {
+      toast({ title: 'Could not load data', description: err.message, variant: 'destructive' });
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -49,34 +48,23 @@ const VerifyPayment: React.FC = () => {
     setResult(null);
 
     try {
-      const { data, error } = await supabase.functions.invoke('verify-payment', {
-        body: {
-          school_id: school.id,
-          student_id: form.student_id,
-          provider: form.provider,
-          transaction_id: form.transaction_id,
-          amount: Number(form.amount),
-          phone: form.phone
-        }
+      const res = await Api.submitPayment(form);
+      setResult({
+        ok: true,
+        message: `Verified ${formatCurrency(Number(res.transaction.amount), res.transaction.currency)} and credited the student.`,
+        tx: res.transaction
       });
-
-      if (error) throw error;
-      setResult(data);
-
-      if (data?.success) {
-        toast({ title: 'Payment Verified!', description: data.message });
-        setForm({ student_id: '', provider: form.provider, transaction_id: '', amount: '', phone: '' });
-      } else {
-        toast({ title: 'Verification failed', description: data?.error || data?.message, variant: 'destructive' });
-      }
+      toast({ title: 'Payment verified!', description: `${res.transaction.external_id} credited.` });
+      setForm({ studentCode: '', provider: form.provider, externalId: '' });
     } catch (err: any) {
-      toast({ title: 'Error', description: err.message, variant: 'destructive' });
+      setResult({ ok: false, message: err.message });
+      toast({ title: 'Verification failed', description: err.message, variant: 'destructive' });
     } finally {
       setLoading(false);
     }
   };
 
-  const selectedStudent = students.find(s => s.id === form.student_id);
+  const selectedStudent = students.find(s => s.student_code === form.studentCode);
 
   if (!can('verify_payment')) {
     return (
@@ -94,21 +82,22 @@ const VerifyPayment: React.FC = () => {
   return (
     <div className="space-y-6 max-w-4xl">
       <div>
-        <h1 className="text-2xl font-bold text-slate-900">Verify Payment</h1>
-        <p className="text-slate-600 mt-1">Submit a transaction ID to verify via the correct provider and auto-credit the student.</p>
+        <h1 className="text-2xl font-bold text-slate-900">Verify payment</h1>
+        <p className="text-slate-600 mt-1">
+          Submit a transaction reference to verify it with the provider and auto-credit the student. Duplicates are rejected and audit-logged.
+        </p>
       </div>
-
 
       <div className="grid md:grid-cols-3 gap-6">
         <Card className="md:col-span-2 p-6">
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <Label>Select Student</Label>
-              <Select value={form.student_id} onValueChange={(v) => setForm({ ...form, student_id: v })}>
+              <Label>Student</Label>
+              <Select value={form.studentCode} onValueChange={(v) => setForm({ ...form, studentCode: v })}>
                 <SelectTrigger><SelectValue placeholder="Choose a student" /></SelectTrigger>
                 <SelectContent>
                   {students.map(s => (
-                    <SelectItem key={s.id} value={s.id}>
+                    <SelectItem key={s.id} value={s.student_code}>
                       {s.student_code} — {s.full_name}
                     </SelectItem>
                   ))}
@@ -117,42 +106,32 @@ const VerifyPayment: React.FC = () => {
             </div>
 
             <div>
-              <Label>Payment Provider</Label>
+              <Label>Provider</Label>
               <Select value={form.provider} onValueChange={(v) => setForm({ ...form, provider: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  {providers.map(p => (
-                    <SelectItem key={p.provider} value={p.provider}>{p.provider}</SelectItem>
-                  ))}
-                  {providers.length === 0 && <SelectItem value="MTN">MTN (not configured)</SelectItem>}
+                  {providers.length > 0
+                    ? providers.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)
+                    : <SelectItem value="MTN">MTN (configure one first)</SelectItem>}
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Transaction ID</Label>
-                <Input
-                  value={form.transaction_id}
-                  onChange={(e) => setForm({ ...form, transaction_id: e.target.value })}
-                  placeholder={form.provider === 'MTN' ? 'MTN-XXXXX' : 'ORG-XXXXX'}
-                  required
-                />
-                <p className="text-xs text-slate-500 mt-1">From customer's SMS receipt</p>
-              </div>
-              <div>
-                <Label>Amount (XAF)</Label>
-                <Input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} required />
-              </div>
-            </div>
-
             <div>
-              <Label>Payer Phone (optional)</Label>
-              <Input value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+237..." />
+              <Label>Transaction reference</Label>
+              <Input
+                value={form.externalId}
+                onChange={(e) => setForm({ ...form, externalId: e.target.value })}
+                placeholder={form.provider === 'MTN' ? 'MoMo-XXXXX' : 'ORG-XXXXX'}
+                required
+              />
+              <p className="text-xs text-slate-500 mt-1">From the customer's SMS receipt. Must be unique for this school + provider.</p>
             </div>
 
-            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={loading || !form.student_id}>
-              {loading ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Verifying with {form.provider}...</> : <><Zap className="w-4 h-4 mr-2" /> Verify & Credit Payment</>}
+            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={loading || !form.studentCode}>
+              {loading
+                ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Verifying with {form.provider}…</>
+                : <><Zap className="w-4 h-4 mr-2" /> Verify & credit</>}
             </Button>
           </form>
         </Card>
@@ -166,28 +145,26 @@ const VerifyPayment: React.FC = () => {
                 </div>
                 <div>
                   <div className="font-semibold text-slate-900">{selectedStudent.full_name}</div>
-                  <div className="text-xs text-slate-500">{selectedStudent.student_code} • {selectedStudent.grade}</div>
+                  <div className="text-xs text-slate-500">{selectedStudent.student_code} • {selectedStudent.class_name || '—'}</div>
                 </div>
               </div>
               <div className="space-y-2 text-sm">
-                <div className="flex justify-between"><span className="text-slate-600">Fee</span><span className="font-medium">{formatCurrency(Number(selectedStudent.fee_amount))}</span></div>
-                <div className="flex justify-between"><span className="text-slate-600">Paid</span><span className="font-medium text-emerald-700">{formatCurrency(Number(selectedStudent.balance))}</span></div>
-                <div className="flex justify-between pt-2 border-t"><span className="text-slate-600">Due</span><span className="font-bold">{formatCurrency(Math.max(0, Number(selectedStudent.fee_amount) - Number(selectedStudent.balance)))}</span></div>
+                <div className="flex justify-between"><span className="text-slate-600">Balance</span><span className="font-medium text-emerald-700">{formatCurrency(Number(selectedStudent.balance), selectedStudent.currency)}</span></div>
               </div>
             </Card>
           )}
 
           {result && (
-            <Card className={`p-5 ${result.success ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
+            <Card className={`p-5 ${result.ok ? 'bg-emerald-50 border-emerald-200' : 'bg-red-50 border-red-200'}`}>
               <div className="flex items-center gap-2 mb-3">
-                {result.success ? <CheckCircle2 className="w-5 h-5 text-emerald-600" /> : <XCircle className="w-5 h-5 text-red-600" />}
-                <div className="font-semibold">{result.success ? 'Verified' : 'Failed'}</div>
+                {result.ok ? <CheckCircle2 className="w-5 h-5 text-emerald-600" /> : <XCircle className="w-5 h-5 text-red-600" />}
+                <div className="font-semibold">{result.ok ? 'Verified' : 'Failed'}</div>
               </div>
-              <p className="text-sm text-slate-700">{result.message || result.error}</p>
-              {result.fee != null && (
+              <p className="text-sm text-slate-700">{result.message}</p>
+              {result.tx && (
                 <div className="mt-3 pt-3 border-t border-slate-200/50 text-xs space-y-1">
-                  <div className="flex justify-between"><span className="text-slate-600">Provider fee</span><span>{formatCurrency(result.fee)}</span></div>
-                  {result.new_balance != null && <div className="flex justify-between"><span className="text-slate-600">New balance</span><span className="font-semibold">{formatCurrency(result.new_balance)}</span></div>}
+                  <div className="flex justify-between"><span className="text-slate-600">Provider ref</span><span className="font-mono">{result.tx.external_id}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-600">Status</span><span className="font-semibold">{result.tx.status}</span></div>
                 </div>
               )}
             </Card>
@@ -196,13 +173,13 @@ const VerifyPayment: React.FC = () => {
           <Card className="p-5 bg-slate-50">
             <div className="flex items-center gap-2 mb-2 text-slate-700">
               <AlertTriangle className="w-4 h-4" />
-              <span className="font-semibold text-sm">Anti-Fraud Checks</span>
+              <span className="font-semibold text-sm">Anti-fraud checks</span>
             </div>
             <ul className="text-xs text-slate-600 space-y-1">
               <li>• Tenant isolation (school_id scope)</li>
-              <li>• Duplicate transaction prevention</li>
-              <li>• Provider-specific validation</li>
-              <li>• Audit log entry</li>
+              <li>• Replay protection: UNIQUE (school, provider, external_id)</li>
+              <li>• Provider-signed verification response required</li>
+              <li>• Audit log entry on every submission</li>
             </ul>
           </Card>
         </div>

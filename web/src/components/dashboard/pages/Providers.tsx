@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { supabase } from '@/lib/supabase';
+import { Api, type BackendPaymentConfig } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/components/ui/use-toast';
 import { CreditCard, Settings, Plus, CheckCircle2, Lock } from 'lucide-react';
@@ -14,80 +14,87 @@ import { CreditCard, Settings, Plus, CheckCircle2, Lock } from 'lucide-react';
 const providersCatalog = [
   { id: 'MTN', name: 'MTN Mobile Money', color: 'from-yellow-400 to-yellow-600', desc: 'Accept MTN MoMo payments across 17 African countries.' },
   { id: 'ORANGE', name: 'Orange Money', color: 'from-orange-400 to-orange-600', desc: 'Orange Money integration for West & Central Africa.' },
-  { id: 'AIRTEL', name: 'Airtel Money', color: 'from-red-400 to-red-600', desc: 'Airtel Money for East & Southern Africa markets.' },
 ];
 
 const Providers: React.FC = () => {
   const { school } = useAuth();
-  const [configs, setConfigs] = useState<any[]>([]);
+  const [configs, setConfigs] = useState<BackendPaymentConfig[]>([]);
   const [editOpen, setEditOpen] = useState(false);
-  const [editing, setEditing] = useState<any>(null);
-  const [form, setForm] = useState({ api_key: '', api_secret: '', merchant_code: '', base_url: '' });
+  const [editing, setEditing] = useState<{ id: string; name: string } | null>(null);
+  const [form, setForm] = useState({ api_key: '', api_secret: '', base_url: '' });
+  const [saving, setSaving] = useState(false);
 
-  useEffect(() => { if (school) load(); }, [school]);
+  useEffect(() => { if (school) load(); /* eslint-disable-line */ }, [school]);
 
   const load = async () => {
-    if (!school) return;
-    const { data } = await supabase.from('payment_configs').select('*').eq('school_id', school.id);
-    setConfigs(data || []);
+    try {
+      const res = await Api.listConfigs();
+      setConfigs(res.configs);
+    } catch (err: any) {
+      toast({ title: 'Could not load providers', description: err.message, variant: 'destructive' });
+    }
   };
 
   const getConfig = (pid: string) => configs.find(c => c.provider === pid);
 
-  const openEdit = (provider: any) => {
-    const existing = getConfig(provider.id);
+  const openEdit = (provider: typeof providersCatalog[number]) => {
     setEditing(provider);
-    setForm({
-      api_key: existing?.api_key || '',
-      api_secret: existing?.api_secret || '',
-      merchant_code: existing?.merchant_code || '',
-      base_url: existing?.base_url || ''
-    });
+    // Note: api_key/api_secret are not returned by the backend (they're encrypted
+    // at rest). Fresh fields on every open.
+    setForm({ api_key: '', api_secret: '', base_url: '' });
     setEditOpen(true);
   };
 
   const saveConfig = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!school || !editing) return;
-    const existing = getConfig(editing.id);
-    if (existing) {
-      await supabase.from('payment_configs').update({ ...form, is_active: true }).eq('id', existing.id);
-    } else {
-      await supabase.from('payment_configs').insert({
-        school_id: school.id, provider: editing.id, ...form, is_active: true
+    if (!editing) return;
+    setSaving(true);
+    try {
+      await Api.upsertConfig({
+        provider: editing.id,
+        api_key: form.api_key,
+        api_secret: form.api_secret,
+        ...(form.base_url ? { base_url: form.base_url } : {})
       });
-    }
-    toast({ title: 'Provider configured', description: `${editing.name} is now active.` });
-    setEditOpen(false);
-    load();
+      toast({ title: 'Provider configured', description: `${editing.name} is now active. Credentials are encrypted with AES-256-GCM.` });
+      setEditOpen(false);
+      load();
+    } catch (err: any) {
+      toast({ title: 'Could not save', description: err.message, variant: 'destructive' });
+    } finally { setSaving(false); }
   };
 
   const toggleActive = async (pid: string, active: boolean) => {
     const c = getConfig(pid);
     if (!c) return;
-    await supabase.from('payment_configs').update({ is_active: active }).eq('id', c.id);
-    toast({ title: active ? 'Provider enabled' : 'Provider disabled' });
-    load();
+    // We don't have the raw creds in-memory, so toggling requires a re-upsert
+    // with a placeholder. For now the backend's is_active flag is only set on
+    // upsert — we surface this in a toast and skip until a dedicated endpoint.
+    toast({
+      title: active ? 'Re-enable via Configure' : 'Disable via Configure',
+      description: 'Toggling on this page requires re-entering the credentials. A dedicated enable/disable endpoint is planned.'
+    });
+    void pid; void c;
   };
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-slate-900">Payment Providers</h1>
-        <p className="text-slate-600 mt-1">Configure your mobile money accounts. API keys are encrypted at rest.</p>
+        <p className="text-slate-600 mt-1">Configure your mobile-money accounts. Credentials are encrypted at rest with AES-256-GCM.</p>
       </div>
 
       <Card className="p-4 bg-blue-50 border-blue-200">
         <div className="flex items-start gap-3">
           <Lock className="w-5 h-5 text-blue-600 mt-0.5" />
           <div className="text-sm">
-            <div className="font-semibold text-blue-900">Security Notice</div>
-            <div className="text-blue-800 mt-1">All API keys are encrypted using AES-256 before storage. Never share your credentials publicly.</div>
+            <div className="font-semibold text-blue-900">Security notice</div>
+            <div className="text-blue-800 mt-1">Provider API keys are encrypted before storage. We never return the plaintext to the client; only whether credentials are set.</div>
           </div>
         </div>
       </Card>
 
-      <div className="grid md:grid-cols-3 gap-6">
+      <div className="grid md:grid-cols-2 gap-6">
         {providersCatalog.map((p) => {
           const config = getConfig(p.id);
           const configured = !!config;
@@ -108,14 +115,14 @@ const Providers: React.FC = () => {
 
               {configured && (
                 <div className="mb-4 p-3 bg-slate-50 rounded-lg text-xs space-y-1">
-                  <div className="flex justify-between"><span className="text-slate-500">Merchant</span><span className="font-mono">{config.merchant_code || '—'}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-500">API Key</span><span className="font-mono">{config.api_key ? '••••' + config.api_key.slice(-4) : 'not set'}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500">Credentials</span><span className="font-mono">{config.has_credentials ? 'set' : 'missing'}</span></div>
+                  <div className="flex justify-between"><span className="text-slate-500">Base URL</span><span className="font-mono">{config.base_url || 'default'}</span></div>
                 </div>
               )}
 
               <div className="flex items-center gap-2">
                 <Button variant="outline" size="sm" className="flex-1" onClick={() => openEdit(p)}>
-                  {configured ? <><Settings className="w-4 h-4 mr-1" /> Configure</> : <><Plus className="w-4 h-4 mr-1" /> Set Up</>}
+                  {configured ? <><Settings className="w-4 h-4 mr-1" /> Configure</> : <><Plus className="w-4 h-4 mr-1" /> Set up</>}
                 </Button>
                 {configured && (
                   <Switch checked={config.is_active} onCheckedChange={(v) => toggleActive(p.id, v)} />
@@ -133,23 +140,19 @@ const Providers: React.FC = () => {
           </DialogHeader>
           <form onSubmit={saveConfig} className="space-y-3">
             <div>
-              <Label>Merchant Code</Label>
-              <Input value={form.merchant_code} onChange={(e) => setForm({ ...form, merchant_code: e.target.value })} placeholder="MTN-RS-001" />
+              <Label>API key</Label>
+              <Input type="password" value={form.api_key} onChange={(e) => setForm({ ...form, api_key: e.target.value })} placeholder="Your API key" required />
             </div>
             <div>
-              <Label>API Key</Label>
-              <Input type="password" value={form.api_key} onChange={(e) => setForm({ ...form, api_key: e.target.value })} placeholder="Your API key" />
-            </div>
-            <div>
-              <Label>API Secret</Label>
-              <Input type="password" value={form.api_secret} onChange={(e) => setForm({ ...form, api_secret: e.target.value })} placeholder="Your API secret" />
+              <Label>API secret</Label>
+              <Input type="password" value={form.api_secret} onChange={(e) => setForm({ ...form, api_secret: e.target.value })} placeholder="Your API secret" required />
             </div>
             <div>
               <Label>Base URL (optional)</Label>
-              <Input value={form.base_url} onChange={(e) => setForm({ ...form, base_url: e.target.value })} placeholder="https://api.mtn.com/..." />
+              <Input value={form.base_url} onChange={(e) => setForm({ ...form, base_url: e.target.value })} placeholder="defaults to sandbox" />
             </div>
-            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700">
-              <CheckCircle2 className="w-4 h-4 mr-2" /> Save Configuration
+            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={saving}>
+              <CheckCircle2 className="w-4 h-4 mr-2" /> {saving ? 'Saving…' : 'Save configuration'}
             </Button>
           </form>
         </DialogContent>
