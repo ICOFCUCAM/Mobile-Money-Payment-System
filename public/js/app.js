@@ -1,5 +1,6 @@
 (function () {
   const app = document.getElementById('app');
+  const toastsEl = document.getElementById('toasts');
   const routes = {};
   let current = {};
 
@@ -12,6 +13,34 @@
       ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])
     );
   }
+
+  /**
+   * Show an ephemeral toast. `type` is 'success' | 'error' | 'warn' | 'info'.
+   * Auto-dismisses after `ms` (default 4s). Click to dismiss early.
+   */
+  function toast(message, type = 'info', { title, ms = 4000 } = {}) {
+    if (!toastsEl) return;
+    const el = document.createElement('div');
+    el.className = `toast ${type}`;
+    el.innerHTML = `
+      ${title ? `<div class="title">${escape(title)}</div>` : ''}
+      <div class="msg">${escape(message)}</div>
+    `;
+    el.addEventListener('click', () => el.remove());
+    toastsEl.appendChild(el);
+    if (ms > 0) setTimeout(() => el.remove(), ms);
+  }
+
+  /**
+   * Run `fn` and toast any thrown error. Returns the fn's return value, or
+   * `undefined` if it threw. Keeps callers tidy.
+   */
+  async function tryAction(fn, { errorTitle = 'Something went wrong' } = {}) {
+    try { return await fn(); }
+    catch (err) { toast(err.message || 'Unexpected error', 'error', { title: errorTitle }); }
+  }
+
+  window.__ui = { toast, tryAction };
 
   function moneyFmt(amount, currency) {
     return `${Number(amount || 0).toLocaleString()} ${currency || ''}`.trim();
@@ -56,16 +85,17 @@
       const data = Object.fromEntries(new FormData(e.target).entries());
       try {
         const res = await Api.post('/schools/register', data);
+        toast('School created. Save the API key — shown only once.', 'success', { title: `Welcome to ${res.school.name}` });
         render(`
           <div class="card" style="max-width:640px;margin:40px auto;">
             <h1>Welcome to ${escape(res.school.name)}!</h1>
-            <div class="alert success">Your school has been created. Save the API key below — it is shown only once.</div>
+            <div class="alert success">Save the API key below — it is shown only once.</div>
             <label class="muted">API key</label>
             <pre>${escape(res.apiKey)}</pre>
             <a class="btn" href="#/login">Continue to login</a>
           </div>`);
       } catch (err) {
-        document.getElementById('err').innerHTML = `<div class="alert">${escape(err.message)}</div>`;
+        toast(err.message, 'error', { title: 'Registration failed' });
       }
     });
   });
@@ -90,9 +120,11 @@
       try {
         const res = await Api.post('/auth/login', data);
         Api.setToken(res.token);
+        current = {};
+        toast(`Signed in as ${res.user.email}`, 'success');
         navigate('#/dashboard');
       } catch (err) {
-        document.getElementById('err').innerHTML = `<div class="alert">${escape(err.message)}</div>`;
+        toast(err.message, 'error', { title: 'Login failed' });
       }
     });
   });
@@ -179,8 +211,13 @@
     document.getElementById('f').addEventListener('submit', async (e) => {
       e.preventDefault();
       const data = Object.fromEntries(new FormData(e.target).entries());
-      try { await Api.post('/students', data); navigate('#/students'); location.reload(); }
-      catch (err) { document.getElementById('err').innerHTML = `<div class="alert">${escape(err.message)}</div>`; }
+      try {
+        const r = await Api.post('/students', data);
+        toast(`Added ${r.student.full_name}`, 'success');
+        location.reload();
+      } catch (err) {
+        toast(err.message, 'error', { title: 'Could not add student' });
+      }
     });
   });
 
@@ -217,8 +254,13 @@
     document.getElementById('f').addEventListener('submit', async (e) => {
       e.preventDefault();
       const data = Object.fromEntries(new FormData(e.target).entries());
-      try { await Api.post('/payments', data); location.reload(); }
-      catch (err) { document.getElementById('err').innerHTML = `<div class="alert">${escape(err.message)}</div>`; }
+      try {
+        const r = await Api.post('/payments', data);
+        toast(`Verified & credited ${moneyFmt(r.transaction.amount, r.transaction.currency)}`, 'success', { title: 'Payment posted' });
+        location.reload();
+      } catch (err) {
+        toast(err.message, 'error', { title: 'Payment verification failed' });
+      }
     });
   });
 
@@ -256,8 +298,13 @@
       e.preventDefault();
       const data = Object.fromEntries(new FormData(e.target).entries());
       if (!data.base_url) delete data.base_url;
-      try { await Api.put('/schools/me/payment-configs', data); location.reload(); }
-      catch (err) { document.getElementById('err').innerHTML = `<div class="alert">${escape(err.message)}</div>`; }
+      try {
+        await Api.put('/schools/me/payment-configs', data);
+        toast(`${data.provider} credentials saved (encrypted)`, 'success');
+        location.reload();
+      } catch (err) {
+        toast(err.message, 'error', { title: 'Could not save provider config' });
+      }
     });
   });
 
@@ -287,8 +334,13 @@
     document.getElementById('logout').onclick = logout;
     document.querySelectorAll('button.choose').forEach((b) => {
       b.addEventListener('click', async () => {
-        try { await Api.post('/subscriptions/change', { plan: b.dataset.plan, paymentReference: 'manual' }); location.reload(); }
-        catch (err) { alert(err.message); }
+        try {
+          await Api.post('/subscriptions/change', { plan: b.dataset.plan, paymentReference: 'manual' });
+          toast(`Plan changed to ${b.dataset.plan}`, 'success');
+          location.reload();
+        } catch (err) {
+          toast(err.message, 'error', { title: 'Plan change failed' });
+        }
       });
     });
   });
