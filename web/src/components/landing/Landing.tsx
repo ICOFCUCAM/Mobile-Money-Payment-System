@@ -108,6 +108,21 @@ const Landing: React.FC = () => {
 
       {/* Hero */}
       <section className="relative overflow-hidden">
+        {/* Subtle dot-grid pattern — pure CSS, no JS */}
+        <div
+          className="absolute inset-0 opacity-[0.35] pointer-events-none"
+          style={{
+            backgroundImage:
+              'radial-gradient(circle at 1px 1px, rgb(148 163 184 / 0.35) 1px, transparent 0)',
+            backgroundSize: '28px 28px',
+            maskImage: 'linear-gradient(to bottom, black 0%, black 60%, transparent 100%)',
+            WebkitMaskImage: 'linear-gradient(to bottom, black 0%, black 60%, transparent 100%)'
+          }}
+        />
+        {/* Floating gradient blobs */}
+        <div className="absolute -top-20 -left-24 w-[420px] h-[420px] rounded-full bg-blue-400/20 blur-3xl pointer-events-none" />
+        <div className="absolute top-40 -right-32 w-[520px] h-[520px] rounded-full bg-indigo-400/20 blur-3xl pointer-events-none" />
+        {/* Soft top-to-bottom wash over the whole hero */}
         <div className="absolute inset-0 bg-gradient-to-b from-blue-50/40 to-transparent pointer-events-none" />
         <div className="relative max-w-7xl mx-auto px-6 py-16 lg:py-24 grid lg:grid-cols-[1.1fr_1fr] gap-12 items-center">
           <div>
