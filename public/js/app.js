@@ -286,7 +286,11 @@
         </form>
       </div>
       <div class="card">
-        <h2>Transactions</h2>
+        <div class="toolbar">
+          <h2 style="margin:0;">Transactions</h2>
+          <div class="spacer"></div>
+          <button class="secondary small" id="exportCsv">Export CSV</button>
+        </div>
         <table><thead><tr><th>Date</th><th>Provider</th><th>Ref</th><th>Amount</th><th>Status</th><th></th></tr></thead>
           <tbody>${rows || '<tr><td colspan=6 class="muted">No transactions yet.</td></tr>'}</tbody></table>
       </div>`;
@@ -301,6 +305,22 @@
         location.reload();
       } catch (err) {
         toast(err.message, 'error', { title: 'Payment verification failed' });
+      }
+    });
+    document.getElementById('exportCsv').addEventListener('click', async () => {
+      const btn = document.getElementById('exportCsv');
+      btn.disabled = true;
+      const original = btn.textContent;
+      btn.innerHTML = '<span class="spinner"></span> Exporting…';
+      try {
+        const filename = `transactions-${(current.school && current.school.slug) || 'export'}-${new Date().toISOString().slice(0,10)}.csv`;
+        await Api.download('/payments/export.csv?limit=10000', filename);
+        toast('CSV exported', 'success');
+      } catch (err) {
+        toast(err.message, 'error', { title: 'Export failed' });
+      } finally {
+        btn.disabled = false;
+        btn.textContent = original;
       }
     });
     document.querySelectorAll('button.reverse').forEach((btn) => {
