@@ -114,7 +114,7 @@ const Landing: React.FC = () => {
             <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 font-medium mb-6">
               Multi-Tenant Fintech Infrastructure
             </Badge>
-            <h1 className="text-5xl md:text-6xl font-bold tracking-tight leading-[1.05]">
+            <h1 className="font-display text-5xl md:text-6xl font-bold tracking-tight leading-[1.05]">
               School Payments,<br />
               <span className="text-blue-600">Unified &<br />Automated.</span>
             </h1>
@@ -212,7 +212,7 @@ const Landing: React.FC = () => {
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-12">
             <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 mb-3">Core Features</Badge>
-            <h2 className="text-3xl md:text-4xl font-bold">Everything your school needs</h2>
+            <h2 className="font-display text-3xl md:text-4xl font-bold">Everything your school needs</h2>
             <p className="mt-3 text-slate-600">From student management to payment reconciliation, built for scale and security.</p>
           </div>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -234,7 +234,7 @@ const Landing: React.FC = () => {
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-12">
             <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 mb-3">Integrated Providers</Badge>
-            <h2 className="text-3xl md:text-4xl font-bold">Accept payments from every major network</h2>
+            <h2 className="font-display text-3xl md:text-4xl font-bold">Accept payments from every major network</h2>
           </div>
           <div className="grid md:grid-cols-3 gap-5">
             {providers.map((p) => (
@@ -259,7 +259,7 @@ const Landing: React.FC = () => {
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-12">
             <Badge variant="outline" className="bg-blue-950 text-blue-300 border-blue-900 mb-3">Architecture</Badge>
-            <h2 className="text-3xl md:text-4xl font-bold">Built for multi-tenant scale</h2>
+            <h2 className="font-display text-3xl md:text-4xl font-bold">Built for multi-tenant scale</h2>
             <p className="mt-3 text-slate-400 max-w-2xl mx-auto">Production-grade architecture with tenant isolation, encrypted credentials, and horizontal scaling.</p>
           </div>
           <div className="grid md:grid-cols-2 gap-5">
@@ -304,7 +304,7 @@ class OrangeProvider extends BaseProvider {...}
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-12">
             <Badge variant="outline" className="bg-blue-950 text-blue-300 border-blue-900 mb-3">Simple Pricing</Badge>
-            <h2 className="text-3xl md:text-4xl font-bold">Choose your plan</h2>
+            <h2 className="font-display text-3xl md:text-4xl font-bold">Choose your plan</h2>
             <p className="mt-3 text-slate-400">All plans include 14-day free trial. Cancel anytime.</p>
           </div>
           <div className="grid md:grid-cols-3 gap-5 max-w-5xl mx-auto">
@@ -346,7 +346,7 @@ class OrangeProvider extends BaseProvider {...}
       {/* CTA band */}
       <section className="bg-gradient-to-br from-blue-600 to-indigo-700 text-white py-16">
         <div className="max-w-4xl mx-auto px-6 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold">Ready to modernize your school payments?</h2>
+          <h2 className="font-display text-3xl md:text-4xl font-bold">Ready to modernize your school payments?</h2>
           <p className="mt-3 text-blue-100">Join 500+ schools across Africa already using SchoolPay.</p>
           <div className="mt-8">
             <Button size="lg" className="bg-white text-blue-700 hover:bg-blue-50" onClick={() => setMode('register')}>
