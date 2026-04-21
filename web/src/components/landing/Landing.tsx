@@ -11,24 +11,42 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/components/ui/use-toast';
 import {
   GraduationCap, CreditCard, ShieldCheck, Zap, Users, BarChart3, Webhook,
-  CheckCircle2, ArrowRight, TrendingUp, Layers, Lock, Globe2
+  CheckCircle2, ArrowRight, TrendingUp, Layers, Lock, Globe2, KeyRound
 } from 'lucide-react';
 
 type Mode = 'login' | 'register';
 
-const features = [
-  { icon: CreditCard, title: 'Multi-provider mobile money', body: 'MTN MoMo and Orange Money out of the box, with a pluggable provider interface for Airtel, Wave, M-Pesa, and more.' },
-  { icon: ShieldCheck, title: 'Bank-grade security', body: 'Provider credentials encrypted at rest with AES-256-GCM. Bcrypt passwords. HMAC-verified webhooks. Full audit log.' },
-  { icon: Users, title: 'Multi-tenant by design', body: "Every school is an isolated tenant: own students, own provider creds, own dashboard, own API key." },
-  { icon: Zap, title: 'Refunds & reconciliation', body: 'Reverse a transaction with one click. A reconciliation worker catches up pending payments every few minutes.' },
-  { icon: BarChart3, title: 'Reports + CSV export', body: 'Filter by status, provider, student. Export 10 000 rows at a time for accounting.' },
-  { icon: Webhook, title: 'Webhook-first', body: "Providers push collections to a signed endpoint scoped to your school slug — we route, verify, and credit." },
+/** The eight cards shown under "Everything your school needs". */
+const coreFeatures = [
+  { icon: Layers,       title: 'Multi-Tenant Architecture', body: 'Each school gets isolated data, custom subdomain, and dedicated configuration.' },
+  { icon: CreditCard,   title: 'Multi-Provider Payments',   body: 'Accept MTN MoMo, Orange Money, Airtel Money through one unified API.' },
+  { icon: ShieldCheck,  title: 'Bank-Grade Security',        body: 'AES-256 encryption for API keys, role-based access, and full audit trails.' },
+  { icon: Zap,          title: 'Instant Verification',       body: 'Sub-second payment verification with automatic duplicate detection.' },
+  { icon: Webhook,      title: 'Webhook Automation',         body: 'Auto-route incoming payments to the correct school and student.' },
+  { icon: BarChart3,    title: 'Real-Time Analytics',        body: 'Track revenue, balances, and provider health in beautiful dashboards.' },
+  { icon: KeyRound,     title: 'Role-Based Access',          body: 'Separate permissions for admins, bursars, and auditors.' },
+  { icon: Globe2,       title: 'Pan-African Ready',          body: 'Works across Cameroon, Nigeria, Ghana, Kenya, Senegal and more.' },
+];
+
+const providers = [
+  { name: 'MTN Mobile Money', users: '280M users', blurb: 'Accept payments from MTN MoMo subscribers across 17 countries.', grad: 'from-yellow-400 to-orange-500' },
+  { name: 'Orange Money',     users: '70M users',  blurb: 'Seamless integration with Orange Money across West & Central Africa.', grad: 'from-orange-400 to-orange-600' },
+  { name: 'Airtel Money',     users: '27M users',  blurb: 'Airtel Money support for East & Southern Africa markets.', grad: 'from-red-400 to-red-600' },
 ];
 
 const plans = [
-  { id: 'basic', name: 'Basic', price: 10, features: ['MTN MoMo only', 'Up to 500 students', 'Email support'] },
-  { id: 'pro', name: 'Pro', price: 25, popular: true, features: ['MTN + Orange', 'Up to 5 000 students', 'Reports + audit log', 'Priority support'] },
-  { id: 'enterprise', name: 'Enterprise', price: null as number | null, features: ['All providers', 'Unlimited students', 'Custom integrations', 'SLA + dedicated support'] },
+  {
+    id: 'basic', name: 'Basic', price: 10,
+    features: ['1 Payment Provider', 'Up to 100 students', 'Basic Dashboard', 'Email Support']
+  },
+  {
+    id: 'pro', name: 'Pro', price: 25, popular: true,
+    features: ['3 Payment Providers', 'Up to 1,000 students', 'Advanced Analytics', 'Priority Support', 'CSV Import/Export', 'Webhooks']
+  },
+  {
+    id: 'enterprise', name: 'Enterprise', price: 99,
+    features: ['Unlimited Providers', 'Unlimited Students', 'White-Label Branding', 'Dedicated Support', 'Custom Integrations', 'SLA Guarantee', 'Audit Logs']
+  }
 ];
 
 const Landing: React.FC = () => {
@@ -64,7 +82,7 @@ const Landing: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-white text-slate-900">
       {/* Nav */}
       <nav className="sticky top-0 z-40 bg-white/85 backdrop-blur border-b border-slate-100">
         <div className="max-w-7xl mx-auto px-6 py-3.5 flex items-center justify-between">
@@ -72,7 +90,7 @@ const Landing: React.FC = () => {
             <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center">
               <GraduationCap className="w-5 h-5 text-white" />
             </div>
-            <span className="font-bold text-lg text-slate-900">SchoolPay</span>
+            <span className="font-bold text-lg">SchoolPay</span>
             <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-[11px] font-medium">SaaS</Badge>
           </div>
           <div className="hidden md:flex items-center gap-9 text-sm text-slate-700">
@@ -96,7 +114,7 @@ const Landing: React.FC = () => {
             <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 font-medium mb-6">
               Multi-Tenant Fintech Infrastructure
             </Badge>
-            <h1 className="text-5xl md:text-6xl font-bold tracking-tight text-slate-900 leading-[1.05]">
+            <h1 className="text-5xl md:text-6xl font-bold tracking-tight leading-[1.05]">
               School Payments,<br />
               <span className="text-blue-600">Unified &<br />Automated.</span>
             </h1>
@@ -120,33 +138,31 @@ const Landing: React.FC = () => {
             </div>
           </div>
 
-          {/* Dashboard preview card */}
-          <Card className="p-6 shadow-2xl border-slate-100 bg-white">
+          {/* Dashboard preview */}
+          <Card className="p-6 shadow-2xl border-slate-100">
             <div className="flex items-start justify-between mb-5">
               <div>
                 <div className="text-xs text-slate-500">Total Revenue</div>
-                <div className="text-3xl font-bold text-slate-900 mt-1 tracking-tight">1,335,000 XAF</div>
+                <div className="text-3xl font-bold mt-1 tracking-tight">1,335,000 XAF</div>
               </div>
               <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-50">
                 <TrendingUp className="w-3 h-3 mr-1" /> +24.5%
               </Badge>
             </div>
-
             <div className="grid grid-cols-3 gap-2.5 mb-5">
               <div className="p-3 rounded-lg bg-yellow-50 border border-yellow-100">
                 <div className="text-[11px] text-yellow-700 font-medium">MTN MoMo</div>
-                <div className="font-bold text-slate-900 mt-0.5">540K</div>
+                <div className="font-bold mt-0.5">540K</div>
               </div>
               <div className="p-3 rounded-lg bg-orange-50 border border-orange-100">
                 <div className="text-[11px] text-orange-700 font-medium">Orange</div>
-                <div className="font-bold text-slate-900 mt-0.5">660K</div>
+                <div className="font-bold mt-0.5">660K</div>
               </div>
               <div className="p-3 rounded-lg bg-slate-50 border border-slate-100">
                 <div className="text-[11px] text-slate-600 font-medium">Pending</div>
-                <div className="font-bold text-slate-900 mt-0.5">80K</div>
+                <div className="font-bold mt-0.5">80K</div>
               </div>
             </div>
-
             <div className="space-y-3">
               {[
                 { initial: 'A', grad: 'from-blue-400 to-indigo-500', name: 'Amina Nkomo', id: 'STU001', amount: '45,000 XAF', status: 'verified', statusClass: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
@@ -159,12 +175,12 @@ const Landing: React.FC = () => {
                       {r.initial}
                     </div>
                     <div>
-                      <div className="font-medium text-slate-900 text-sm">{r.name}</div>
+                      <div className="font-medium text-sm">{r.name}</div>
                       <div className="text-xs text-slate-500">{r.id}</div>
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="font-semibold text-slate-900 text-sm">{r.amount}</div>
+                    <div className="font-semibold text-sm">{r.amount}</div>
                     <Badge variant="outline" className={`${r.statusClass} text-[10px] mt-1 hover:bg-inherit`}>{r.status}</Badge>
                   </div>
                 </div>
@@ -174,155 +190,221 @@ const Landing: React.FC = () => {
         </div>
       </section>
 
-      {/* Stats strip */}
-      <section className="bg-slate-950 text-white py-14">
+      {/* Stats strip — light, blue numbers */}
+      <section className="border-y border-slate-100 bg-white py-14">
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
           {[
-            { num: '500+', label: 'Schools onboarded' },
-            { num: '2.4M+', label: 'Students managed' },
-            { num: '$18M+', label: 'Payments processed' },
+            { num: '500+',  label: 'Schools Onboarded' },
+            { num: '2.4M+', label: 'Transactions Processed' },
+            { num: '$18M+', label: 'Volume Managed' },
             { num: '99.9%', label: 'Uptime SLA' }
           ].map((s) => (
             <div key={s.label}>
-              <div className="text-4xl md:text-5xl font-bold bg-gradient-to-r from-blue-400 to-indigo-400 bg-clip-text text-transparent">{s.num}</div>
-              <div className="text-sm text-slate-400 mt-2">{s.label}</div>
+              <div className="text-4xl md:text-5xl font-bold text-blue-600 tracking-tight">{s.num}</div>
+              <div className="text-sm text-slate-500 mt-2">{s.label}</div>
             </div>
           ))}
         </div>
       </section>
 
-      {/* Features */}
-      <section id="features" className="max-w-7xl mx-auto px-6 py-20">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold text-slate-900">Everything a school bursar needs.</h2>
-          <p className="mt-3 text-slate-600">Receipt verification, refunds, reports — already built, already tested.</p>
-        </div>
-        <div className="grid md:grid-cols-3 gap-5">
-          {features.map((f) => (
-            <Card key={f.title} className="p-6 hover:shadow-md transition-shadow border-slate-100">
-              <div className="w-11 h-11 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center mb-4">
-                <f.icon className="w-5 h-5 text-white" />
-              </div>
-              <h3 className="font-semibold text-slate-900 mb-1.5">{f.title}</h3>
-              <p className="text-sm text-slate-600 leading-relaxed">{f.body}</p>
-            </Card>
-          ))}
-        </div>
-      </section>
-
-      {/* Providers */}
-      <section id="providers" className="bg-slate-50 py-20 border-y border-slate-100">
+      {/* Core features — 8 cards, 4×2 */}
+      <section id="features" className="bg-slate-50 py-20">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center mb-10">
-            <h2 className="text-3xl md:text-4xl font-bold text-slate-900">Every provider your parents use.</h2>
-            <p className="mt-3 text-slate-600">Pluggable integrations so new providers drop in without touching app code.</p>
+          <div className="text-center mb-12">
+            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 mb-3">Core Features</Badge>
+            <h2 className="text-3xl md:text-4xl font-bold">Everything your school needs</h2>
+            <p className="mt-3 text-slate-600">From student management to payment reconciliation, built for scale and security.</p>
           </div>
-          <div className="grid md:grid-cols-3 gap-5">
-            {[
-              { name: 'MTN Mobile Money', grad: 'from-yellow-400 to-yellow-600', desc: '17 African countries. Sandbox + production out of the box.' },
-              { name: 'Orange Money', grad: 'from-orange-400 to-orange-600', desc: 'West & Central Africa. WebPay + cash-in APIs.' },
-              { name: 'Airtel Money', grad: 'from-red-400 to-red-600', desc: 'East & Southern Africa. Roadmap — integration ships Q2.' }
-            ].map((p) => (
-              <Card key={p.name} className="p-6 bg-white border-slate-100">
-                <div className={`w-12 h-12 rounded-lg bg-gradient-to-br ${p.grad} flex items-center justify-center mb-4`}>
-                  <CreditCard className="w-5 h-5 text-white" />
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {coreFeatures.map((f) => (
+              <Card key={f.title} className="p-5 bg-white border-slate-100 hover:shadow-md transition-shadow">
+                <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center mb-3">
+                  <f.icon className="w-5 h-5 text-blue-600" />
                 </div>
-                <h3 className="font-semibold text-slate-900">{p.name}</h3>
-                <p className="text-sm text-slate-600 mt-1.5">{p.desc}</p>
+                <h3 className="font-semibold mb-1.5">{f.title}</h3>
+                <p className="text-sm text-slate-600 leading-relaxed">{f.body}</p>
               </Card>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Pricing */}
-      <section id="pricing" className="max-w-7xl mx-auto px-6 py-20">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold text-slate-900">Simple, transparent pricing.</h2>
-          <p className="mt-3 text-slate-600">Flat monthly fee per school. No per-transaction markup.</p>
-        </div>
-        <div className="grid md:grid-cols-3 gap-5 max-w-5xl mx-auto">
-          {plans.map((p) => (
-            <Card key={p.id} className={`p-6 relative ${p.popular ? 'ring-2 ring-blue-600 shadow-lg' : 'border-slate-100'}`}>
-              {p.popular && (
-                <Badge className="absolute -top-3 left-6 bg-blue-600">Most popular</Badge>
-              )}
-              <h3 className="text-xl font-bold text-slate-900 capitalize">{p.name}</h3>
-              <div className="mt-3 flex items-baseline gap-1">
-                <span className="text-4xl font-bold text-slate-900">{p.price == null ? 'Custom' : `$${p.price}`}</span>
-                {p.price != null && <span className="text-slate-500">/month</span>}
-              </div>
-              <ul className="mt-5 space-y-2">
-                {p.features.map((f) => (
-                  <li key={f} className="flex items-start gap-2 text-sm text-slate-700">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" /> {f}
-                  </li>
-                ))}
-              </ul>
-              <Button
-                className={`w-full mt-6 ${p.popular ? 'bg-blue-600 hover:bg-blue-700' : ''}`}
-                variant={p.popular ? 'default' : 'outline'}
-                onClick={() => {
-                  setRegisterForm((f) => ({ ...f, plan: p.id }));
-                  setMode('register');
-                }}
-              >
-                {p.price == null ? 'Contact sales' : 'Get started'}
-              </Button>
-            </Card>
-          ))}
-        </div>
-      </section>
-
-      {/* Architecture */}
-      <section id="architecture" className="bg-slate-950 text-white py-20">
+      {/* Providers */}
+      <section id="providers" className="bg-white py-20">
         <div className="max-w-7xl mx-auto px-6">
           <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold">Architecture you can verify.</h2>
-            <p className="mt-3 text-slate-400 max-w-2xl mx-auto">No black boxes. Multi-tenant from the schema up. Auditable end-to-end.</p>
+            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 mb-3">Integrated Providers</Badge>
+            <h2 className="text-3xl md:text-4xl font-bold">Accept payments from every major network</h2>
           </div>
           <div className="grid md:grid-cols-3 gap-5">
-            {[
-              { icon: Layers, title: 'Multi-tenant Postgres', body: 'Every row carries a `school_id`. Middleware enforces tenant scope on every query. Cross-tenant leaks are structurally impossible.' },
-              { icon: Lock, title: 'AES-256-GCM at rest', body: 'Provider API keys never touch the client; only their SHA-256 hash and encrypted ciphertext are stored.' },
-              { icon: Globe2, title: 'Deployed on Vercel', body: 'Vite frontend on the CDN; Express serverless function handles /api/* and /webhooks/*. Zero-ops from push to prod.' }
-            ].map((a) => (
-              <div key={a.title} className="p-6 rounded-lg border border-slate-800 bg-slate-900/60">
-                <div className="w-11 h-11 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center mb-4">
-                  <a.icon className="w-5 h-5 text-white" />
+            {providers.map((p) => (
+              <Card key={p.name} className="p-6 border-slate-100">
+                <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${p.grad} flex items-center justify-center mb-4`}>
+                  <CreditCard className="w-5 h-5 text-white" />
                 </div>
-                <h3 className="font-semibold mb-1.5">{a.title}</h3>
-                <p className="text-sm text-slate-400 leading-relaxed">{a.body}</p>
-              </div>
+                <h3 className="font-bold text-lg">{p.name}</h3>
+                <div className="text-sm text-slate-500 mt-0.5">{p.users}</div>
+                <p className="text-sm text-slate-600 mt-3 leading-relaxed">{p.blurb}</p>
+                <div className="mt-5 flex items-center gap-1.5 text-xs text-emerald-700 font-medium">
+                  <CheckCircle2 className="w-4 h-4" /> Ready to integrate
+                </div>
+              </Card>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Final CTA */}
+      {/* Architecture (dark) */}
+      <section id="architecture" className="bg-slate-950 text-white py-20">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center mb-12">
+            <Badge variant="outline" className="bg-blue-950 text-blue-300 border-blue-900 mb-3">Architecture</Badge>
+            <h2 className="text-3xl md:text-4xl font-bold">Built for multi-tenant scale</h2>
+            <p className="mt-3 text-slate-400 max-w-2xl mx-auto">Production-grade architecture with tenant isolation, encrypted credentials, and horizontal scaling.</p>
+          </div>
+          <div className="grid md:grid-cols-2 gap-5">
+            <div className="p-6 rounded-xl border border-slate-800 bg-slate-900/60">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-9 h-9 rounded-lg bg-blue-500/15 flex items-center justify-center">
+                  <Lock className="w-4 h-4 text-blue-400" />
+                </div>
+                <h3 className="font-semibold">Tenant Isolation</h3>
+              </div>
+              <pre className="bg-black/40 rounded-lg p-4 text-xs text-slate-300 overflow-x-auto font-mono leading-relaxed">
+{`// Every query is scoped by school_id
+db.query(
+  \`SELECT * FROM students
+   WHERE school_id = $1\`,
+  [req.school.id]
+); // ← isolated`}
+              </pre>
+            </div>
+            <div className="p-6 rounded-xl border border-slate-800 bg-slate-900/60">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-9 h-9 rounded-lg bg-indigo-500/15 flex items-center justify-center">
+                  <Layers className="w-4 h-4 text-indigo-400" />
+                </div>
+                <h3 className="font-semibold">Provider Abstraction</h3>
+              </div>
+              <pre className="bg-black/40 rounded-lg p-4 text-xs text-slate-300 overflow-x-auto font-mono leading-relaxed">
+{`class BaseProvider {
+  async verifyTransaction(externalId) {...}
+}
+class MTNProvider    extends BaseProvider {...}
+class OrangeProvider extends BaseProvider {...}
+// dynamic dispatch per school config`}
+              </pre>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing (dark) */}
+      <section id="pricing" className="bg-slate-950 text-white pt-8 pb-20">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="text-center mb-12">
+            <Badge variant="outline" className="bg-blue-950 text-blue-300 border-blue-900 mb-3">Simple Pricing</Badge>
+            <h2 className="text-3xl md:text-4xl font-bold">Choose your plan</h2>
+            <p className="mt-3 text-slate-400">All plans include 14-day free trial. Cancel anytime.</p>
+          </div>
+          <div className="grid md:grid-cols-3 gap-5 max-w-5xl mx-auto">
+            {plans.map((p) => (
+              <Card
+                key={p.id}
+                className={`p-6 bg-slate-900 text-white border-slate-800 relative ${p.popular ? 'ring-2 ring-blue-500 shadow-xl md:scale-[1.03]' : ''}`}
+              >
+                {p.popular && (
+                  <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-blue-600">Most Popular</Badge>
+                )}
+                <h3 className="text-xl font-bold">{p.name}</h3>
+                <div className="mt-4 flex items-baseline gap-1">
+                  <span className="text-5xl font-bold tracking-tight">${p.price}</span>
+                  <span className="text-slate-400">/month</span>
+                </div>
+                <ul className="mt-6 space-y-2.5">
+                  {p.features.map((f) => (
+                    <li key={f} className="flex items-start gap-2 text-sm text-slate-200">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" /> {f}
+                    </li>
+                  ))}
+                </ul>
+                <Button
+                  className={`w-full mt-7 ${p.popular ? 'bg-blue-600 hover:bg-blue-700' : 'bg-slate-100 text-slate-900 hover:bg-white'}`}
+                  onClick={() => {
+                    setRegisterForm((f) => ({ ...f, plan: p.id }));
+                    setMode('register');
+                  }}
+                >
+                  Get Started
+                </Button>
+              </Card>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA band */}
       <section className="bg-gradient-to-br from-blue-600 to-indigo-700 text-white py-16">
         <div className="max-w-4xl mx-auto px-6 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold">Ready to collect fees over mobile money?</h2>
-          <p className="mt-3 text-blue-100">Register your school in under a minute. The first 14 days are on us.</p>
-          <div className="mt-8 flex items-center justify-center gap-3 flex-wrap">
+          <h2 className="text-3xl md:text-4xl font-bold">Ready to modernize your school payments?</h2>
+          <p className="mt-3 text-blue-100">Join 500+ schools across Africa already using SchoolPay.</p>
+          <div className="mt-8">
             <Button size="lg" className="bg-white text-blue-700 hover:bg-blue-50" onClick={() => setMode('register')}>
-              Start Free Trial <ArrowRight className="w-4 h-4 ml-1" />
-            </Button>
-            <Button size="lg" variant="outline" className="border-white text-white hover:bg-white/10" onClick={() => setMode('login')}>
-              Sign in
+              Start Your Free Trial <ArrowRight className="w-4 h-4 ml-1" />
             </Button>
           </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="border-t border-slate-100 py-8 bg-white">
-        <div className="max-w-7xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-3 text-xs text-slate-500">
-          <div>© {new Date().getFullYear()} SchoolPay. Multi-tenant mobile-money SaaS.</div>
+      {/* Footer (dark) */}
+      <footer className="bg-slate-950 text-slate-400 py-14">
+        <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-4 gap-8">
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-600 to-indigo-700 flex items-center justify-center">
+                <GraduationCap className="w-4 h-4 text-white" />
+              </div>
+              <span className="font-bold text-white">SchoolPay</span>
+            </div>
+            <p className="text-sm leading-relaxed">The leading multi-tenant mobile-money payment platform for schools across Africa.</p>
+          </div>
+          <div>
+            <div className="font-semibold text-white mb-3">Product</div>
+            <ul className="space-y-2 text-sm">
+              <li><a href="#features" className="hover:text-white">Features</a></li>
+              <li><a href="#pricing" className="hover:text-white">Pricing</a></li>
+              <li><a href="#providers" className="hover:text-white">Integrations</a></li>
+              <li><a href="#" className="hover:text-white">API Docs</a></li>
+              <li><a href="#" className="hover:text-white">Security</a></li>
+            </ul>
+          </div>
+          <div>
+            <div className="font-semibold text-white mb-3">Company</div>
+            <ul className="space-y-2 text-sm">
+              <li><a href="#" className="hover:text-white">About</a></li>
+              <li><a href="#" className="hover:text-white">Careers</a></li>
+              <li><a href="#" className="hover:text-white">Blog</a></li>
+              <li><a href="#" className="hover:text-white">Press</a></li>
+              <li><a href="#" className="hover:text-white">Contact</a></li>
+            </ul>
+          </div>
+          <div>
+            <div className="font-semibold text-white mb-3">Resources</div>
+            <ul className="space-y-2 text-sm">
+              <li><a href="#" className="hover:text-white">Documentation</a></li>
+              <li><a href="#" className="hover:text-white">Support</a></li>
+              <li><a href="#" className="hover:text-white">Status</a></li>
+              <li><a href="#" className="hover:text-white">Privacy</a></li>
+              <li><a href="#" className="hover:text-white">Terms</a></li>
+            </ul>
+          </div>
+        </div>
+        <div className="max-w-7xl mx-auto px-6 mt-10 pt-6 border-t border-slate-900 flex flex-col md:flex-row items-center justify-between gap-3 text-xs">
+          <div>© {new Date().getFullYear()} SchoolPay SaaS. All rights reserved.</div>
           <div className="flex items-center gap-5">
-            <a href="#features" className="hover:text-slate-900">Features</a>
-            <a href="#pricing" className="hover:text-slate-900">Pricing</a>
-            <a href="#architecture" className="hover:text-slate-900">Architecture</a>
+            <a href="#" className="hover:text-white">Privacy</a>
+            <a href="#" className="hover:text-white">Terms</a>
+            <a href="#" className="hover:text-white">Cookies</a>
           </div>
         </div>
       </footer>
@@ -399,9 +481,9 @@ const Landing: React.FC = () => {
               <Select value={registerForm.plan} onValueChange={(v) => setRegisterForm({ ...registerForm, plan: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="basic">Basic — MTN only ($10/mo)</SelectItem>
-                  <SelectItem value="pro">Pro — MTN + Orange ($25/mo)</SelectItem>
-                  <SelectItem value="enterprise">Enterprise — custom quote</SelectItem>
+                  <SelectItem value="basic">Basic — $10/mo</SelectItem>
+                  <SelectItem value="pro">Pro — $25/mo</SelectItem>
+                  <SelectItem value="enterprise">Enterprise — $99/mo</SelectItem>
                 </SelectContent>
               </Select>
             </div>
