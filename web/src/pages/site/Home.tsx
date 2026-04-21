@@ -29,48 +29,47 @@ const HomeInner: React.FC = () => {
   return (
     <>
       {/* Hero */}
-      <section className="relative overflow-hidden bg-blue-900">
+      <section className="relative bg-slate-900">
         {/*
-         * Classroom photograph as the hero backdrop. Uses a reliable Unsplash CDN
-         * image; if blocked, the deep-blue section background shows through so
-         * nothing ever looks broken.
+         * Clean photograph of African children going to school. We don't wash
+         * the whole image — only the two overlay cards (headline on the left,
+         * the rotating dashboard widget on the right) have their own frosted
+         * backdrop so the rest of the photograph stays sharp and readable.
+         * Falls back to the dark slate section background if the CDN is blocked.
          */}
         <img
-          src="https://images.unsplash.com/photo-1427504494785-3a9ca7044f45?auto=format&fit=crop&w=2000&q=80"
-          alt=""
-          aria-hidden="true"
+          src="https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=2000&q=85"
+          alt="African schoolchildren on their way to class"
           className="absolute inset-0 w-full h-full object-cover"
           onError={(e) => { (e.currentTarget.style.display = 'none'); }}
         />
-        {/* Brand-blue wash on top so the hero still reads as OUR product, and the
-            left-side headline stays legible on any photo. */}
-        <div className="absolute inset-0 bg-gradient-to-r from-blue-950/90 via-blue-900/80 to-blue-900/45 pointer-events-none" />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-white pointer-events-none" />
-        <div className="absolute -top-20 -left-24 w-[420px] h-[420px] rounded-full bg-blue-400/20 blur-3xl pointer-events-none" />
-        <div className="absolute top-40 -right-32 w-[520px] h-[520px] rounded-full bg-indigo-400/20 blur-3xl pointer-events-none" />
+        {/* Very light bottom fade so the rest of the page connects smoothly —
+            the photo itself stays sharp and un-blurred. */}
+        <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-b from-transparent to-white pointer-events-none" />
 
-        <div className="relative max-w-7xl mx-auto px-6 py-20 lg:py-28 grid lg:grid-cols-[1.1fr_1fr] gap-12 items-center">
-          <div className="text-white">
-            <Badge variant="outline" className="bg-white/10 text-blue-100 border-white/20 font-medium mb-6 backdrop-blur-sm">
+        <div className="relative max-w-7xl mx-auto px-6 py-20 lg:py-28 grid lg:grid-cols-[1.1fr_1fr] gap-10 items-center">
+          {/* Headline card — frosted glass so the photo still shows through softly */}
+          <div className="bg-blue-950/70 backdrop-blur-md border border-white/15 rounded-2xl p-8 md:p-10 text-white shadow-2xl">
+            <Badge variant="outline" className="bg-white/10 text-blue-100 border-white/20 font-medium mb-5">
               Multi-Tenant Fintech Infrastructure
             </Badge>
-            <h1 className="font-display text-5xl md:text-6xl font-bold tracking-tight leading-[1.05] drop-shadow-sm">
+            <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.05]">
               School Payments,<br />
               <span className="text-blue-300">Unified &<br />Automated.</span>
             </h1>
-            <p className="mt-6 text-lg text-blue-50/90 max-w-xl leading-relaxed">
+            <p className="mt-6 text-lg text-blue-50/95 leading-relaxed">
               The complete SaaS platform for schools to accept mobile money payments from MTN,
               Orange, and Airtel — with automatic verification, student credit, and real-time dashboards.
             </p>
-            <div className="mt-8 flex flex-wrap gap-3">
+            <div className="mt-7 flex flex-wrap gap-3">
               <Button size="lg" className="bg-blue-600 hover:bg-blue-500 shadow-lg" onClick={() => setMode('register')}>
                 Start Free Trial <ArrowRight className="w-4 h-4 ml-1" />
               </Button>
-              <Button asChild size="lg" variant="outline" className="bg-white/10 border-white/30 text-white hover:bg-white/20 hover:text-white backdrop-blur-sm">
+              <Button asChild size="lg" variant="outline" className="bg-white/10 border-white/30 text-white hover:bg-white/20 hover:text-white">
                 <Link to="/developers">See Developer Docs</Link>
               </Button>
             </div>
-            <div className="mt-8 flex items-center gap-6 text-sm text-blue-100 flex-wrap">
+            <div className="mt-7 flex items-center gap-6 text-sm text-blue-100 flex-wrap">
               <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-emerald-400" /> No credit card</span>
               <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-emerald-400" /> 14-day trial</span>
               <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-emerald-400" /> Setup in minutes</span>
