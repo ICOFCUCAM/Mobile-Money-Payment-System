@@ -313,12 +313,21 @@
     });
   });
 
-  route('#/payments', async () => {
+  route('#/payments', async (params) => {
     if (!protect()) return;
     await loadMe();
-    const [txList, configs] = await Promise.all([Api.get('/payments?limit=100'), Api.get('/schools/me/payment-configs')]);
+    const statusFilter = (params && params.get('status')) || '';
+    const providerFilter = (params && params.get('provider')) || '';
+    const listQs = new URLSearchParams({ limit: '100' });
+    if (statusFilter) listQs.set('status', statusFilter);
+    if (providerFilter) listQs.set('provider', providerFilter);
+    const [txList, configs] = await Promise.all([
+      Api.get('/payments?' + listQs.toString()),
+      Api.get('/schools/me/payment-configs')
+    ]);
     const providers = (configs.configs || []).filter((c) => c.is_active).map((c) => c.provider);
     const isAdmin = current.user && current.user.role === 'admin';
+    const canReconcile = current.user && (current.user.role === 'admin' || current.user.role === 'bursar');
     const rows = (txList.transactions || []).map((t) => `
       <tr>
         <td>${escape(t.created_at)}</td>
@@ -350,11 +359,23 @@
       <div class="card">
         <div class="toolbar">
           <h2 style="margin:0;">Transactions</h2>
+          <select id="statusFilter">
+            <option value="" ${statusFilter===''?'selected':''}>All statuses</option>
+            <option value="pending" ${statusFilter==='pending'?'selected':''}>Pending</option>
+            <option value="success" ${statusFilter==='success'?'selected':''}>Success</option>
+            <option value="failed" ${statusFilter==='failed'?'selected':''}>Failed</option>
+            <option value="reversed" ${statusFilter==='reversed'?'selected':''}>Reversed</option>
+          </select>
+          <select id="providerFilter">
+            <option value="" ${providerFilter===''?'selected':''}>All providers</option>
+            ${providers.map((p) => `<option value="${escape(p)}" ${providerFilter===p?'selected':''}>${escape(p)}</option>`).join('')}
+          </select>
           <div class="spacer"></div>
+          ${canReconcile ? '<button class="secondary small" id="reconcile">Reconcile pending</button>' : ''}
           <button class="secondary small" id="exportCsv">Export CSV</button>
         </div>
         <table><thead><tr><th>Date</th><th>Provider</th><th>Ref</th><th>Amount</th><th>Status</th><th></th></tr></thead>
-          <tbody>${rows || '<tr><td colspan=6 class="muted">No transactions yet.</td></tr>'}</tbody></table>
+          <tbody>${rows || `<tr><td colspan=6 class="muted">${statusFilter||providerFilter ? 'No transactions match this filter.' : 'No transactions yet.'}</td></tr>`}</tbody></table>
       </div>`;
     render(shell('payments', body));
     document.getElementById('logout').onclick = logout;
@@ -369,14 +390,53 @@
         toast(err.message, 'error', { title: 'Payment verification failed' });
       }
     });
+    function applyFilters() {
+      const qs = new URLSearchParams();
+      const s = document.getElementById('statusFilter').value;
+      const p = document.getElementById('providerFilter').value;
+      if (s) qs.set('status', s);
+      if (p) qs.set('provider', p);
+      const str = qs.toString();
+      navigate(str ? `#/payments?${str}` : '#/payments');
+    }
+    document.getElementById('statusFilter').addEventListener('change', applyFilters);
+    document.getElementById('providerFilter').addEventListener('change', applyFilters);
+
+    const reconcileBtn = document.getElementById('reconcile');
+    if (reconcileBtn) {
+      reconcileBtn.addEventListener('click', async () => {
+        reconcileBtn.disabled = true;
+        const original = reconcileBtn.textContent;
+        reconcileBtn.innerHTML = '<span class="spinner"></span> Reconciling…';
+        try {
+          const r = await Api.post('/payments/reconcile?limit=50');
+          toast(
+            `Checked ${r.checked}: ${r.success} succeeded, ${r.failed} failed, ${r.stillPending} still pending` +
+              (r.errored ? `, ${r.errored} errored` : ''),
+            r.errored ? 'warn' : 'success',
+            { title: 'Reconciliation complete' }
+          );
+          location.reload();
+        } catch (err) {
+          toast(err.message, 'error', { title: 'Reconciliation failed' });
+        } finally {
+          reconcileBtn.disabled = false;
+          reconcileBtn.textContent = original;
+        }
+      });
+    }
+
     document.getElementById('exportCsv').addEventListener('click', async () => {
       const btn = document.getElementById('exportCsv');
       btn.disabled = true;
       const original = btn.textContent;
       btn.innerHTML = '<span class="spinner"></span> Exporting…';
       try {
+        const exportQs = new URLSearchParams({ limit: '10000' });
+        if (statusFilter) exportQs.set('status', statusFilter);
+        if (providerFilter) exportQs.set('provider', providerFilter);
         const filename = `transactions-${(current.school && current.school.slug) || 'export'}-${new Date().toISOString().slice(0,10)}.csv`;
-        await Api.download('/payments/export.csv?limit=10000', filename);
+        await Api.download('/payments/export.csv?' + exportQs.toString(), filename);
         toast('CSV exported', 'success');
       } catch (err) {
         toast(err.message, 'error', { title: 'Export failed' });
