@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -238,10 +239,13 @@ const Landing: React.FC = () => {
             <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={submitting}>
               {submitting ? 'Signing in…' : 'Sign in'}
             </Button>
-            <div className="text-center text-sm">
+            <div className="flex items-center justify-between text-sm">
               <button type="button" className="text-blue-600 hover:underline" onClick={() => setMode('register')}>
-                Don't have an account? Register a school.
+                Register a school
               </button>
+              <Link to="/forgot-password" className="text-slate-500 hover:text-slate-900">
+                Forgot password?
+              </Link>
             </div>
           </form>
         </DialogContent>
