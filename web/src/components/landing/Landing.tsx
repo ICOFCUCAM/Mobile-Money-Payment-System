@@ -12,7 +12,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/components/ui/use-toast';
 import {
   GraduationCap, CreditCard, ShieldCheck, Zap, Users, BarChart3, Webhook,
-  CheckCircle2, ArrowRight, TrendingUp, Layers, Lock, Globe2, KeyRound
+  CheckCircle2, ArrowRight, TrendingUp, Layers, Lock, Globe2, KeyRound,
+  Building2, Settings2, Wallet
 } from 'lucide-react';
 
 type Mode = 'login' | 'register';
@@ -141,7 +142,8 @@ const Landing: React.FC = () => {
             <span className="font-bold text-lg">SchoolPay</span>
             <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-[11px] font-medium">SaaS</Badge>
           </div>
-          <div className="hidden md:flex items-center gap-9 text-sm text-slate-700">
+          <div className="hidden md:flex items-center gap-8 text-sm text-slate-700">
+            <a href="#how" className="hover:text-slate-900">How it works</a>
             <a href="#features" className="hover:text-slate-900">Features</a>
             <a href="#providers" className="hover:text-slate-900">Providers</a>
             <a href="#pricing" className="hover:text-slate-900">Pricing</a>
@@ -273,6 +275,57 @@ const Landing: React.FC = () => {
               <div className="text-sm text-slate-500 mt-2">{s.label}</div>
             </FadeIn>
           ))}
+        </div>
+      </section>
+
+      {/* How it works — 3 steps */}
+      <section id="how" className="bg-white py-20 relative">
+        <div className="max-w-7xl mx-auto px-6">
+          <FadeIn className="text-center mb-14">
+            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 mb-3">How it works</Badge>
+            <h2 className="font-display text-3xl md:text-4xl font-bold">From zero to collecting fees in an afternoon</h2>
+            <p className="mt-3 text-slate-600 max-w-2xl mx-auto">Three steps. No phone calls, no bank meetings, no hardware to ship.</p>
+          </FadeIn>
+
+          <div className="relative grid md:grid-cols-3 gap-5">
+            {/* Faint connector line (desktop only) */}
+            <div className="hidden md:block absolute top-10 left-[16.66%] right-[16.66%] h-px bg-gradient-to-r from-transparent via-blue-200 to-transparent pointer-events-none" />
+
+            {[
+              {
+                n: '01',
+                icon: Building2,
+                title: 'Register your school',
+                body: 'Pick a subdomain, create an admin, choose a plan. 60 seconds — no credit card.',
+                accent: 'from-blue-500 to-indigo-600'
+              },
+              {
+                n: '02',
+                icon: Settings2,
+                title: 'Configure providers',
+                body: 'Paste your MTN / Orange API keys (encrypted at rest with AES-256-GCM). We generate your signed webhook URLs.',
+                accent: 'from-indigo-500 to-purple-600'
+              },
+              {
+                n: '03',
+                icon: Wallet,
+                title: 'Collect payments',
+                body: 'Parents pay from any phone. We verify with the provider, credit the student, and log everything for your audit trail.',
+                accent: 'from-purple-500 to-pink-600'
+              }
+            ].map((s, i) => (
+              <FadeIn key={s.n} delay={i * 0.12}>
+                <div className="relative bg-white rounded-xl border border-slate-100 p-6 h-full hover:shadow-lg transition-shadow">
+                  <div className={`w-14 h-14 rounded-full bg-gradient-to-br ${s.accent} flex items-center justify-center text-white shadow-md mb-4 relative z-10`}>
+                    <s.icon className="w-6 h-6" />
+                  </div>
+                  <div className="font-mono text-xs text-slate-400 mb-1">Step {s.n}</div>
+                  <h3 className="font-display text-xl font-bold mb-2">{s.title}</h3>
+                  <p className="text-sm text-slate-600 leading-relaxed">{s.body}</p>
+                </div>
+              </FadeIn>
+            ))}
+          </div>
         </div>
       </section>
 
