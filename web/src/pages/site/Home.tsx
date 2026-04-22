@@ -375,35 +375,61 @@ const HomeInner: React.FC = () => {
       </section>
 
       {/* How it works */}
-      <section className="bg-white py-20 relative">
-        <div className="max-w-7xl mx-auto px-6">
-          <FadeIn className="text-center mb-14">
-            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 mb-3">How it works</Badge>
-            <h2 className="font-display text-3xl md:text-4xl font-bold">From zero to collecting fees in an afternoon</h2>
-            <p className="mt-3 text-slate-600 max-w-2xl mx-auto">Three steps. No phone calls, no bank meetings, no hardware to ship.</p>
+      <section className="bg-white py-24 relative">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+          <FadeIn className="text-center mb-16 max-w-2xl mx-auto">
+            <div className="text-[11px] uppercase tracking-[0.25em] text-royal font-semibold mb-3">
+              How it works
+            </div>
+            <h2 className="font-display text-3xl md:text-5xl font-bold text-navy tracking-tight">
+              From zero to collecting fees <span className="text-royal">in an afternoon</span>
+            </h2>
+            <p className="mt-4 text-slate-600 text-lg">
+              Three steps. No phone calls, no bank meetings, no hardware to ship.
+            </p>
           </FadeIn>
-          <div className="relative grid md:grid-cols-3 gap-5">
-            <div className="hidden md:block absolute top-10 left-[16.66%] right-[16.66%] h-px bg-gradient-to-r from-transparent via-blue-200 to-transparent pointer-events-none" />
+
+          <div className="relative grid md:grid-cols-3 gap-6">
+            {/* Dashed connector line between steps */}
+            <div className="hidden md:block absolute top-8 left-[16.66%] right-[16.66%] h-px border-t-2 border-dashed border-royal/20 pointer-events-none" />
+
             {[
-              { n: '01', icon: Building2, title: 'Register your school', body: 'Pick a subdomain, create an admin, choose a plan. 60 seconds — no credit card.', accent: 'from-blue-500 to-indigo-600' },
-              { n: '02', icon: Settings2, title: 'Configure providers', body: 'Paste your MTN / Orange API keys (encrypted at rest with AES-256-GCM). We generate your signed webhook URLs.', accent: 'from-indigo-500 to-purple-600' },
-              { n: '03', icon: Wallet, title: 'Collect payments', body: 'Parents pay from any phone. We verify with the provider, credit the student, and log everything for your audit trail.', accent: 'from-purple-500 to-pink-600' }
+              {
+                n: '01',
+                icon: Building2,
+                title: 'Register your school',
+                body: 'Pick a subdomain, create an admin, choose a plan. 60 seconds — no credit card required.'
+              },
+              {
+                n: '02',
+                icon: Settings2,
+                title: 'Configure providers',
+                body: 'Paste your MTN / Orange / Airtel API keys (AES-256-GCM at rest). We generate your signed webhook URLs.'
+              },
+              {
+                n: '03',
+                icon: Wallet,
+                title: 'Collect payments',
+                body: 'Parents pay from any phone. We verify with the provider, credit the student, and log everything for audit.'
+              }
             ].map((s, i) => (
               <FadeIn key={s.n} delay={i * 0.12}>
-                <div className="relative bg-white rounded-xl border border-slate-100 p-6 h-full hover:shadow-lg transition-shadow">
-                  <div className={`w-14 h-14 rounded-full bg-gradient-to-br ${s.accent} flex items-center justify-center text-white shadow-md mb-4 relative z-10`}>
-                    <s.icon className="w-6 h-6" />
+                <div className="relative bg-white rounded-2xl border border-slate-200 p-8 h-full hover:shadow-xl hover:shadow-navy/5 hover:-translate-y-1 transition-all duration-300">
+                  {/* Step number badge — navy with gold hairline */}
+                  <div className="relative z-10 w-16 h-16 rounded-2xl bg-navy flex items-center justify-center text-white shadow-lg shadow-navy/30 mb-5 ring-2 ring-gold/40">
+                    <s.icon className="w-7 h-7 text-gold" />
                   </div>
-                  <div className="font-mono text-xs text-slate-400 mb-1">Step {s.n}</div>
-                  <h3 className="font-display text-xl font-bold mb-2">{s.title}</h3>
+                  <div className="font-mono text-xs text-royal font-semibold mb-1.5 tracking-widest">STEP {s.n}</div>
+                  <h3 className="font-display text-xl font-bold text-navy mb-2.5">{s.title}</h3>
                   <p className="text-sm text-slate-600 leading-relaxed">{s.body}</p>
                 </div>
               </FadeIn>
             ))}
           </div>
-          <FadeIn className="text-center mt-10">
-            <Button asChild variant="outline">
-              <Link to="/features">Explore features <ArrowRight className="w-4 h-4 ml-1" /></Link>
+
+          <FadeIn className="text-center mt-12">
+            <Button asChild variant="outline" className="border-navy text-navy hover:bg-navy hover:text-white">
+              <Link to="/features">Explore all features <ArrowRight className="w-4 h-4 ml-1.5" /></Link>
             </Button>
           </FadeIn>
         </div>
