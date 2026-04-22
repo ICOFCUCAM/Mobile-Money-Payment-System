@@ -25,7 +25,9 @@ const PLANS = {
  * Callers must retry on UNIQUE conflict — probability is tiny
  * (<1 in 28M collision on the first million schools).
  */
-const REF_ALPHABET = '23456789ABCDEFGHJKLMNPQRSTWXYZ'; // 30 chars
+// 29 chars: digits 2–9 + letters A–Z with I / L / O / U / V removed so
+// nobody squints at a MoMo memo and mistypes "1" for "I" or "O" for "0".
+const REF_ALPHABET = '23456789ABCDEFGHJKMNPQRSTWXYZ';
 function generateBillingRef() {
   const bytes = crypto.randomBytes(5);
   let out = '';
