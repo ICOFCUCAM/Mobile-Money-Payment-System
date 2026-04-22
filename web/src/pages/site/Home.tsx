@@ -31,18 +31,25 @@ const HomeInner: React.FC = () => {
 
   return (
     <>
-      {/* Hero — navy with Africa map on the left, dashboard widget on the right,
-           live transactions ticker underneath. No photograph; pure SVG + CSS so
-           nothing can fail to load. */}
+      {/* Hero — navy with the Africa map as a FULL-WIDTH background (replaces
+           the previous photograph). Headline, widget and ticker sit on top. */}
       <section className="relative bg-navy text-white overflow-hidden pb-0">
         {/* Soft ambient glows + top gold hairline */}
         <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-gold/50 to-transparent" />
         <div className="absolute -top-40 -left-20 w-[620px] h-[620px] rounded-full bg-royal/15 blur-3xl pointer-events-none" />
         <div className="absolute -bottom-40 -right-20 w-[620px] h-[620px] rounded-full bg-gold/8 blur-3xl pointer-events-none" />
 
+        {/* FULL-WIDTH Africa map background — spans the entire hero edge-to-edge,
+            shifted slightly right so the headline on the left reads clearly. */}
+        <div className="absolute inset-0 pointer-events-none opacity-90">
+          <AfricaMap className="w-full h-full -translate-x-[6%] md:translate-x-[8%] scale-[1.05] md:scale-110 origin-center" />
+        </div>
+        {/* Left navy vignette so the headline stays legible on top of the map */}
+        <div className="absolute inset-0 bg-gradient-to-r from-navy via-navy/80 to-transparent pointer-events-none" />
+
         <div className="relative max-w-7xl mx-auto px-6 lg:px-8 pt-20 lg:pt-24">
           {/* Row 1 — headline block, left-aligned */}
-          <div className="max-w-3xl">
+          <div className="max-w-2xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gold/15 border border-gold/40 text-gold text-[11px] font-semibold uppercase tracking-widest mb-6">
               <span className="w-1.5 h-1.5 rounded-full bg-gold animate-pulse" /> Live across 12 countries
             </div>
@@ -80,21 +87,21 @@ const HomeInner: React.FC = () => {
             </div>
           </div>
 
-          {/* Row 2 — Africa map on the left, dashboard widget on the right */}
-          <div className="mt-14 grid lg:grid-cols-[1.1fr_1fr] gap-10 items-center">
-            <FadeIn className="relative">
-              <AfricaMap className="w-full h-auto" />
-              {/* Overlay metric chip — "3 networks · 12 countries" */}
-              <div className="absolute top-3 left-3 flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm text-[11px]">
+          {/* Row 2 — dashboard widget on the right; map is the full-width
+              background so the left column is just a spacer that lets the
+              map breathe behind the headline. */}
+          <div className="mt-14 grid lg:grid-cols-[1fr_1fr] gap-10 items-center">
+            {/* Spacer / "3 networks · 12 countries" pill floating over the map */}
+            <div className="hidden lg:block relative h-[420px]">
+              <div className="absolute bottom-4 left-0 flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm text-[11px]">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                 <span className="text-white/90 font-semibold">3 networks</span>
                 <span className="text-white/40">·</span>
                 <span className="text-gold font-semibold">12 countries</span>
               </div>
-            </FadeIn>
+            </div>
 
-          {/* Rotating dashboard widget — white card, as before. Sits on top of the
-              clean photograph on the right. */}
+          {/* Rotating dashboard widget — white card, sits on the right over the map. */}
           <Card className="p-0 shadow-2xl border-slate-100 overflow-hidden relative">
             <div className="absolute -top-3 -right-3 w-24 h-24 rounded-full bg-blue-500/10 blur-2xl pointer-events-none" />
             <div className="flex border-b border-slate-100 bg-slate-50/50">
