@@ -17,18 +17,16 @@ router.use(authJwt);
 router.post('/intents',       asyncHandler(ctrl.createIntent));
 router.get('/wallet',         asyncHandler(ctrl.getWallet));
 
-// Admin platform override — caller must be admin AND belong to the
+// Admin platform routes — caller must be admin AND belong to the
 // schoolpay-billing tenant (only our own staff).
-router.post(
-  '/admin/override',
-  requireRole('admin'),
-  (req, res, next) => {
-    if (req.school.id !== 'schoolpay-billing') {
-      return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Platform-admin only' } });
-    }
-    next();
-  },
-  asyncHandler(ctrl.setOverride)
-);
+function requirePlatformAdmin(req, res, next) {
+  if (req.school.id !== 'schoolpay-billing') {
+    return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Platform-admin only' } });
+  }
+  next();
+}
+
+router.get ('/admin/schools',  requireRole('admin'), requirePlatformAdmin, asyncHandler(ctrl.adminListSchools));
+router.post('/admin/override', requireRole('admin'), requirePlatformAdmin, asyncHandler(ctrl.setOverride));
 
 module.exports = router;

@@ -363,6 +363,27 @@ function catalogueUsd() {
   };
 }
 
+/**
+ * List every real tenant (excludes the schoolpay-billing internal one)
+ * for the admin override UI. Returns balance + subscription + override +
+ * last-topup date so the admin can see the whole picture in one table.
+ */
+async function listSchoolsForAdmin() {
+  const r = await db.query(
+    `SELECT
+       s.id, s.name, s.slug, s.email,
+       s.subscription_plan, s.subscription_status, s.subscription_expires_at,
+       s.wallet_balance_cents, s.billing_ref, s.custom_price_cents,
+       s.is_active, s.created_at,
+       (SELECT MAX(created_at) FROM wallet_transactions
+          WHERE school_id = s.id AND kind LIKE 'topup_%') AS last_topup_at
+     FROM schools s
+     WHERE s.is_billing_tenant = FALSE
+     ORDER BY s.created_at DESC`
+  );
+  return r.rows;
+}
+
 module.exports = {
   PLANS,
   generateBillingRef,
@@ -373,5 +394,6 @@ module.exports = {
   creditFromInboundPayment,
   getWallet,
   setPriceOverride,
-  catalogueUsd
+  catalogueUsd,
+  listSchoolsForAdmin
 };

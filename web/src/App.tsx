@@ -19,6 +19,7 @@ import About from "./pages/site/About";
 import Developers from "./pages/site/Developers";
 import Pay from "./pages/site/Pay";
 import Subscribe from "./pages/Subscribe";
+import BillingAdmin from "./pages/BillingAdmin";
 
 const queryClient = new QueryClient();
 
@@ -59,6 +60,8 @@ const App = () => (
               <Route path="/pay" element={<Pay />} />
               {/* Billing / subscribe — requires auth, pure page (no dashboard chrome) */}
               <Route path="/billing/subscribe" element={<Subscribe />} />
+              {/* Platform-admin only — server-side enforced */}
+              <Route path="/admin/billing" element={<BillingAdmin />} />
               {/* Password reset flows always render */}
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />

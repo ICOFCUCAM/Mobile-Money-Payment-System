@@ -295,6 +295,24 @@ export const Api = {
     request<{ ok: true; id: string; custom_price_cents: number | null }>(
       'POST', '/billing/admin/override', body
     ),
+  adminListSchools: () =>
+    request<{
+      schools: Array<{
+        id: string;
+        name: string;
+        slug: string;
+        email: string;
+        subscription_plan: string;
+        subscription_status: string;
+        subscription_expires_at: string | null;
+        wallet_balance_cents: number;
+        billing_ref: string | null;
+        custom_price_cents: number | null;
+        is_active: boolean;
+        created_at: string;
+        last_topup_at: string | null;
+      }>;
+    }>('GET', '/billing/admin/schools'),
 };
 
 // Legacy compatibility: old dashboard code may still `import { Api } from '@/lib/api'`

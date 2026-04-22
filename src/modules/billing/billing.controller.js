@@ -41,4 +41,10 @@ async function setOverride(req, res) {
   res.json({ ok: true, ...result });
 }
 
-module.exports = { createIntent, getWallet, catalog, setOverride };
+/** GET /api/billing/admin/schools — admin-only */
+async function adminListSchools(_req, res) {
+  const schools = await service.listSchoolsForAdmin();
+  res.json({ schools });
+}
+
+module.exports = { createIntent, getWallet, catalog, setOverride, adminListSchools };
