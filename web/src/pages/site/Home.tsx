@@ -282,6 +282,80 @@ const HomeInner: React.FC = () => {
         </div>
       </section>
 
+      {/* Problem → Solution */}
+      <section className="bg-slate-50 py-24">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+          <FadeIn className="text-center mb-14 max-w-2xl mx-auto">
+            <div className="text-[11px] uppercase tracking-[0.25em] text-royal font-semibold mb-3">
+              The shift
+            </div>
+            <h2 className="font-display text-3xl md:text-5xl font-bold text-navy tracking-tight">
+              From Excel sheets to <span className="text-royal">real-time reconciliation</span>
+            </h2>
+          </FadeIn>
+
+          <div className="grid lg:grid-cols-2 gap-6">
+            {/* Problem card — dark */}
+            <FadeIn>
+              <div className="relative bg-navy rounded-2xl p-8 md:p-10 text-white h-full overflow-hidden">
+                <div className="absolute -top-24 -right-24 w-64 h-64 rounded-full bg-red-500/10 blur-3xl pointer-events-none" />
+                <div className="relative">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/15 border border-red-400/30 text-red-200 text-[11px] font-semibold uppercase tracking-widest mb-5">
+                    Today's pain
+                  </div>
+                  <h3 className="font-display text-2xl md:text-3xl font-bold mb-6">
+                    The bursar's Friday problem
+                  </h3>
+                  <ul className="space-y-4 text-slate-300">
+                    {[
+                      'Parents send MoMo receipts over WhatsApp — one-by-one.',
+                      'Bursars type transaction IDs into Excel, sometimes twice.',
+                      'Duplicate payments go unnoticed; refunds take weeks.',
+                      'No audit trail when regulators or auditors come calling.',
+                      'Sales calls and bank meetings before you can even start.'
+                    ].map((p) => (
+                      <li key={p} className="flex gap-3">
+                        <span className="shrink-0 mt-1 w-5 h-5 rounded-full bg-red-500/20 border border-red-400/40 flex items-center justify-center text-red-300 text-xs font-bold">×</span>
+                        <span className="leading-relaxed">{p}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </FadeIn>
+
+            {/* Solution card — light with gold accent */}
+            <FadeIn delay={0.1}>
+              <div className="relative bg-white rounded-2xl p-8 md:p-10 h-full overflow-hidden border border-slate-200 shadow-lg shadow-slate-900/5">
+                <div className="absolute -top-24 -right-24 w-64 h-64 rounded-full bg-gold/15 blur-3xl pointer-events-none" />
+                <div className="relative">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gold/15 border border-gold/40 text-gold-600 text-[11px] font-semibold uppercase tracking-widest mb-5">
+                    SchoolPay way
+                  </div>
+                  <h3 className="font-display text-2xl md:text-3xl font-bold text-navy mb-6">
+                    Verified, credited, audited — in two seconds
+                  </h3>
+                  <ul className="space-y-4 text-slate-700">
+                    {[
+                      'Parents pay from any phone; we verify with the provider instantly.',
+                      'Student balance credited automatically — no re-keying.',
+                      'Duplicate protection by design: UNIQUE(school, provider, tx_id).',
+                      'Append-only audit log you can hand straight to auditors.',
+                      'Sign up in 60 seconds — no sales call, no bank meeting.'
+                    ].map((p) => (
+                      <li key={p} className="flex gap-3">
+                        <CheckCircle2 className="shrink-0 mt-0.5 w-5 h-5 text-royal" />
+                        <span className="leading-relaxed">{p}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </FadeIn>
+          </div>
+        </div>
+      </section>
+
       {/* Stats */}
       <section className="border-b border-slate-100 bg-white py-14">
         <div className="max-w-7xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
