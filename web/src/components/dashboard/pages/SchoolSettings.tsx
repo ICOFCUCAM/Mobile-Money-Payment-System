@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/components/ui/use-toast';
 import { Save, Building2, Globe, Webhook, Key, Trash2, Lock } from 'lucide-react';
 import { usePermissions } from '@/hooks/usePermissions';
+import TwoFactorCard from '@/components/dashboard/TwoFactorCard';
 
 const SchoolSettings: React.FC = () => {
   const { school, user, refresh, logout } = useAuth();
@@ -200,6 +201,12 @@ const SchoolSettings: React.FC = () => {
           </Button>
         </form>
       </Card>
+
+      {/* Per-user TOTP 2FA. Self-contained state machine — reads status
+           from /auth/me on mount, drives enroll / verify / backup-codes /
+           disable flows internally, and shows a policy banner for platform
+           admins who haven't enrolled yet. */}
+      <TwoFactorCard />
 
       {isAdmin && (
         <Card className="p-6 border-red-200">

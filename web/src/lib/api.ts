@@ -166,11 +166,27 @@ export type Plan = {
 
 export const Api = {
   // Auth
-  login: (body: { email: string; password: string; schoolSlug?: string }) =>
-    request<{ token: string; user: BackendUser & { fullName?: string }; school: { id: string; slug: string; name: string; plan: string } }>(
-      'POST', '/auth/login', body
+  login: (body: { email: string; password: string; schoolSlug?: string; totp?: string }) =>
+    request<
+      // Either a full session, OR a "give me a TOTP code first" flag.
+      | { token: string; user: BackendUser & { fullName?: string; twofa_enabled?: boolean; must_enroll_2fa?: boolean }; school: { id: string; slug: string; name: string; plan: string } }
+      | { requires2fa: 'verify' | 'enroll' }
+    >('POST', '/auth/login', body),
+  me: () =>
+    request<{
+      user: BackendUser & { twofa_enabled?: boolean; must_enroll_2fa?: boolean };
+      school: { id: string; slug: string; name: string; plan: string };
+    }>('GET', '/auth/me'),
+
+  // 2FA — all require an authenticated session (no enrollment without a login).
+  setup2fa: () =>
+    request<{ qrDataUrl: string; secret: string; otpauthUri: string; issuer: string; label: string }>(
+      'POST', '/auth/2fa/setup'
     ),
-  me: () => request<{ user: BackendUser; school: { id: string; slug: string; name: string; plan: string } }>('GET', '/auth/me'),
+  confirm2fa: (body: { code: string }) =>
+    request<{ enabled: true; backupCodes: string[] }>('POST', '/auth/2fa/confirm', body),
+  disable2fa: (body: { code: string }) =>
+    request<{ enabled: false }>('POST', '/auth/2fa/disable', body),
   changePassword: (body: { currentPassword: string; newPassword: string }) =>
     request<{ ok: true }>('POST', '/auth/change-password', body),
   requestPasswordReset: (body: { email: string; schoolSlug?: string }) =>

@@ -40,13 +40,33 @@ export const AuthDialogs: React.FC<Props> = ({ mode, setMode, defaultPlan = 'bas
     setRegisterForm((f) => ({ ...f, plan: defaultPlan }));
   }, [defaultPlan]);
 
+  // Two-step login: password → (if account has 2FA) 6-digit TOTP → done.
+  const [loginStep, setLoginStep] = useState<'password' | 'totp'>('password');
+  const [totpCode, setTotpCode] = useState('');
+
   const onLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setSubmitting(true);
-    const { error } = await login(loginForm.email, loginForm.password);
+    const res = await login(
+      loginForm.email,
+      loginForm.password,
+      undefined,
+      loginStep === 'totp' ? totpCode.trim() : undefined
+    );
     setSubmitting(false);
-    if (error) toast({ title: 'Login failed', description: error, variant: 'destructive' });
-    else toast({ title: 'Welcome back' });
+    if (res.error) {
+      toast({ title: 'Login failed', description: res.error, variant: 'destructive' });
+      return;
+    }
+    if (res.requires2fa === 'verify') {
+      setLoginStep('totp');
+      setTotpCode('');
+      return;
+    }
+    // Success — reset and close
+    setLoginStep('password');
+    setTotpCode('');
+    toast({ title: 'Welcome back' });
   };
 
   const onRegister = async (e: React.FormEvent) => {
@@ -73,25 +93,67 @@ export const AuthDialogs: React.FC<Props> = ({ mode, setMode, defaultPlan = 'bas
             <DialogDescription>Access your school's dashboard.</DialogDescription>
           </DialogHeader>
           <form onSubmit={onLogin} className="space-y-3">
-            <div>
-              <Label>Email</Label>
-              <Input type="email" value={loginForm.email} onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })} required />
-            </div>
-            <div>
-              <Label>Password</Label>
-              <Input type="password" value={loginForm.password} onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })} required />
-            </div>
-            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={submitting}>
-              {submitting ? 'Signing in…' : 'Sign in'}
-            </Button>
-            <div className="flex items-center justify-between text-sm">
-              <button type="button" className="text-blue-600 hover:underline" onClick={() => setMode('register')}>
-                Register a school
-              </button>
-              <Link to="/forgot-password" className="text-slate-500 hover:text-slate-900">
-                Forgot password?
-              </Link>
-            </div>
+            {loginStep === 'password' && (
+              <>
+                <div>
+                  <Label>Email</Label>
+                  <Input type="email" value={loginForm.email} onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })} required autoFocus />
+                </div>
+                <div>
+                  <Label>Password</Label>
+                  <Input type="password" value={loginForm.password} onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })} required />
+                </div>
+                <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={submitting}>
+                  {submitting ? 'Signing in…' : 'Sign in'}
+                </Button>
+                <div className="flex items-center justify-between text-sm">
+                  <button type="button" className="text-blue-600 hover:underline" onClick={() => setMode('register')}>
+                    Register a school
+                  </button>
+                  <Link to="/forgot-password" className="text-slate-500 hover:text-slate-900">
+                    Forgot password?
+                  </Link>
+                </div>
+              </>
+            )}
+
+            {loginStep === 'totp' && (
+              <>
+                <div className="p-3 rounded-lg bg-blue-50 border border-blue-200 text-[13px] text-blue-900">
+                  This account has two-factor authentication. Open your authenticator app and enter the 6-digit code.
+                </div>
+                <div>
+                  <Label>6-digit code</Label>
+                  <Input
+                    inputMode="numeric"
+                    pattern="[0-9A-Fa-f ]*"
+                    maxLength={11}
+                    value={totpCode}
+                    onChange={(e) => setTotpCode(e.target.value)}
+                    placeholder="123 456"
+                    className="font-mono tracking-widest text-lg"
+                    required
+                    autoFocus
+                  />
+                  <div className="text-[11px] text-slate-500 mt-1">
+                    Lost your device? Enter one of your 10-character backup codes instead.
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="flex-1"
+                    onClick={() => { setLoginStep('password'); setTotpCode(''); }}
+                  >
+                    Back
+                  </Button>
+                  <Button type="submit" className="flex-[2] bg-blue-600 hover:bg-blue-700" disabled={submitting || totpCode.length < 6}>
+                    {submitting ? 'Verifying…' : 'Verify & sign in'}
+                  </Button>
+                </div>
+              </>
+            )}
           </form>
         </DialogContent>
       </Dialog>

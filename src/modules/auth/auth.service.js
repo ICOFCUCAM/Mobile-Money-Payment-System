@@ -41,23 +41,25 @@ async function login({ email, password, schoolSlug, totp }, ip) {
   const ok = await bcrypt.compare(password, user.password_hash);
   if (!ok) throw new AuthError('Invalid credentials');
 
-  // 2FA gate. If this user has TOTP enrolled, or if policy requires it for
-  // their role+tenant, the login must carry a valid `totp` code. Otherwise
-  // we respond with `requires2fa: true` and the client re-submits with the
-  // code. We never return a session token until 2FA clears.
+  // 2FA gate. Three cases:
+  //   1. User has TOTP enrolled and passed a valid code → proceed.
+  //   2. User has TOTP enrolled but didn't pass a code → respond
+  //      { requires2fa: 'verify' } (no token). Client re-submits with code.
+  //   3. 2FA is REQUIRED by policy but user hasn't enrolled → we still
+  //      issue a session token so they can reach /auth/2fa/setup, but we
+  //      tag the response with { mustEnroll2fa: true } so the UI shows a
+  //      banner until they finish enrollment.
   const twofa = require('./twofa.service');
-  const mustHave2fa = !!user.totp_secret || twofa.isRequiredFor(user);
-  if (mustHave2fa && !user.totp_secret) {
-    // Policy requires 2FA but account hasn't enrolled — tell the client to
-    // go to /settings/2fa first. Short-circuit login.
-    return { requires2fa: 'enroll' };
-  }
+  const mustHave2fa = twofa.isRequiredFor(user);
+  let mustEnroll2fa = false;
   if (user.totp_secret) {
     if (!totp) return { requires2fa: 'verify' };
     if (!(await twofa.verifyCode(user, totp))) {
       writeAudit({ schoolId: school.id, userId: user.id, action: 'auth.2fa_failed', ip });
       throw new AuthError('Invalid 2FA code');
     }
+  } else if (mustHave2fa) {
+    mustEnroll2fa = true;
   }
 
   await db.query('UPDATE users SET last_login_at = NOW() WHERE id = $1', [user.id]);
@@ -66,7 +68,8 @@ async function login({ email, password, schoolSlug, totp }, ip) {
   const token = signToken({ sub: user.id, school_id: school.id, role: user.role });
   return {
     token,
-    user: { id: user.id, email: user.email, role: user.role, fullName: user.full_name },
+    user: { id: user.id, email: user.email, role: user.role, fullName: user.full_name,
+            twofa_enabled: !!user.totp_secret, must_enroll_2fa: mustEnroll2fa },
     school: { id: school.id, slug: school.slug, name: school.name, plan: school.subscription_plan }
   };
 }

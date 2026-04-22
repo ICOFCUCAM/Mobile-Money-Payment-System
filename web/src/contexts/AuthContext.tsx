@@ -30,7 +30,8 @@ interface AuthContextType {
   user: SchoolUser | null;
   school: School | null;
   loading: boolean;
-  login: (email: string, password: string, schoolSlug?: string) => Promise<{ error?: string }>;
+  login: (email: string, password: string, schoolSlug?: string, totp?: string) =>
+    Promise<{ error?: string; requires2fa?: 'verify' | 'enroll' }>;
   register: (data: RegisterData) => Promise<{ error?: string; apiKey?: string }>;
   logout: () => void;
   refresh: () => Promise<void>;
@@ -106,9 +107,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => { (async () => { await refresh(); setLoading(false); })(); }, []);
 
-  const login = async (email: string, password: string, schoolSlug?: string) => {
+  const login = async (email: string, password: string, schoolSlug?: string, totp?: string) => {
     try {
-      const res = await Api.login({ email, password, ...(schoolSlug ? { schoolSlug } : {}) });
+      const res = await Api.login({
+        email, password,
+        ...(schoolSlug ? { schoolSlug } : {}),
+        ...(totp ? { totp } : {})
+      });
+      // Server says the account has 2FA enrolled but this login didn't carry
+      // a code. UI should prompt for the 6-digit code and resubmit.
+      if ('requires2fa' in res) {
+        return { requires2fa: res.requires2fa };
+      }
       setToken(res.token);
       setUser({
         id: res.user.id,

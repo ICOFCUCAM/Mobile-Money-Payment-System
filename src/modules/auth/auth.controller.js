@@ -8,9 +8,23 @@ async function login(req, res) {
 }
 
 async function me(req, res) {
+  // Policy check: platform admins in the schoolpay-billing tenant must 2FA.
+  // Surface that flag so the dashboard can show a "Enable 2FA now" banner.
+  const twofa = require('./twofa.service');
+  const must_enroll_2fa = twofa.isRequiredFor(req.user) && !req.user.totp_secret;
+
   res.json({
-    user: { id: req.user.id, email: req.user.email, role: req.user.role },
-    school: { id: req.school.id, slug: req.school.slug, name: req.school.name, plan: req.school.subscription_plan }
+    user: {
+      id: req.user.id,
+      email: req.user.email,
+      role: req.user.role,
+      twofa_enabled:  !!req.user.totp_secret,
+      must_enroll_2fa
+    },
+    school: {
+      id: req.school.id, slug: req.school.slug,
+      name: req.school.name, plan: req.school.subscription_plan
+    }
   });
 }
 
