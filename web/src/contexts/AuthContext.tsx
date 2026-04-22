@@ -34,6 +34,10 @@ interface AuthContextType {
   register: (data: RegisterData) => Promise<{ error?: string; apiKey?: string }>;
   logout: () => void;
   refresh: () => Promise<void>;
+  /** Holds the freshly-minted API key from the last successful registration
+   * so the reveal dialog can render in either pre- or post-auth view. */
+  justIssuedApiKey: string | null;
+  clearJustIssuedApiKey: () => void;
 }
 
 interface RegisterData {
@@ -79,6 +83,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<SchoolUser | null>(null);
   const [school, setSchool] = useState<School | null>(null);
   const [loading, setLoading] = useState(true);
+  const [justIssuedApiKey, setJustIssuedApiKey] = useState<string | null>(null);
 
   const refresh = async () => {
     const tok = getToken();
@@ -143,6 +148,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         role: mapRole(loginRes.user.role)
       });
       setSchool(toSchoolShape(res.school));
+      // Stash the plaintext API key on the provider so the reveal dialog
+      // can render AFTER auto-login (the register dialog is inside
+      // AuthDialogs which unmounts as soon as setUser fires).
+      if (res.apiKey) setJustIssuedApiKey(res.apiKey);
       return { apiKey: res.apiKey };
     } catch (err: any) {
       return { error: err.message || 'Registration failed' };
@@ -156,7 +165,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   return (
-    <AuthContext.Provider value={{ user, school, loading, login, register, logout, refresh }}>
+    <AuthContext.Provider value={{
+      user, school, loading,
+      login, register, logout, refresh,
+      justIssuedApiKey,
+      clearJustIssuedApiKey: () => setJustIssuedApiKey(null)
+    }}>
       {children}
     </AuthContext.Provider>
   );

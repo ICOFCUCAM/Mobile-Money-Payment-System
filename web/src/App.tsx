@@ -8,6 +8,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import { AppProvider } from "@/contexts/AppContext";
 import DashboardLayout from "@/components/dashboard/DashboardLayout";
+import ApiKeyRevealDialog from "@/components/ApiKeyRevealDialog";
 import NotFound from "./pages/NotFound";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
@@ -54,6 +55,9 @@ const App = () => (
         <Toaster />
         <Sonner />
         <AuthProvider>
+          {/* Renders regardless of auth state — survives the guest→
+               authenticated flip that happens the instant register() runs. */}
+          <ApiKeyRevealDialog />
           <BrowserRouter>
             <Routes>
               {/* Hosted pay page works for both auth and anon — public UX */}
