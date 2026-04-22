@@ -21,4 +21,22 @@ export default defineConfig(() => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    // Split the heaviest third-party libs into their own long-lived cached
+    // chunks so they don't invalidate every time app code changes.
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          "vendor-react":  ["react", "react-dom", "react-router-dom"],
+          "vendor-motion": ["framer-motion"],
+          "vendor-maps":   ["react-simple-maps", "d3-geo"],
+          "vendor-ui":     ["lucide-react", "class-variance-authority", "clsx", "tailwind-merge"]
+        }
+      }
+    },
+    // Raise the warn threshold — with manualChunks + lazy routes the
+    // remaining chunks are sensibly sized; Vite's default 500KB warn
+    // is too noisy for a rich SaaS app.
+    chunkSizeWarningLimit: 700
+  }
 }));
