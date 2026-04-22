@@ -58,6 +58,33 @@ app.use(express.urlencoded({ extended: true }));
 
 app.get('/health', (_req, res) => res.json({ ok: true, uptime: process.uptime() }));
 
+// Retention sweeper. Protected by a shared secret in CLEANUP_TOKEN.
+// Accepts the token via any of: `Authorization: Bearer <token>` (Vercel
+// crons use this), `X-Cleanup-Token`, or `?token=` query param. Returns
+// per-table delete counts for observability.
+//
+// To wire a Vercel cron, add this to vercel.json:
+//   "crons": [{ "path": "/api/_cleanup", "schedule": "0 3 * * *" }]
+// and set CLEANUP_TOKEN in project settings (Vercel passes it as Bearer).
+app.all('/api/_cleanup', async (req, res, next) => {
+  try {
+    const expected = process.env.CLEANUP_TOKEN;
+    if (!expected) {
+      return res.status(503).json({ error: { code: 'NOT_CONFIGURED', message: 'CLEANUP_TOKEN is not set' } });
+    }
+    const auth = req.headers.authorization || '';
+    const bearer = /^Bearer\s+(.+)$/i.exec(auth);
+    const supplied = (bearer && bearer[1]) || req.headers['x-cleanup-token'] || req.query.token;
+    if (supplied !== expected) {
+      return res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'invalid or missing cleanup token' } });
+    }
+    const { getPool } = require('./core/database');
+    const { runCleanup } = require('./core/cleanup');
+    const result = await runCleanup(getPool());
+    res.json({ ok: true, ...result });
+  } catch (err) { next(err); }
+});
+
 // Readiness probe with a DB ping. Surfaces the real error only when DEBUG_ERRORS=1.
 app.get('/api/_status', async (_req, res) => {
   const { db } = require('./core/database');
