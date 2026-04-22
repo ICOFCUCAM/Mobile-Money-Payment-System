@@ -8,7 +8,8 @@ import {
   GraduationCap, CreditCard, ShieldCheck, Zap, CheckCircle2, ArrowRight,
   TrendingUp, Layers, Lock, Globe2, Building2, Settings2, Wallet, Quote,
   History, Activity, UserPlus, Undo2, Webhook, KeyRound,
-  Coins, CalendarClock, Server, Sparkles
+  Coins, CalendarClock, Server, Sparkles, MoreHorizontal, FileCheck, AlertCircle,
+  Clock, Shield
 } from 'lucide-react';
 import { SiteLayoutWithAuthCtx, useAuthDialog } from '@/components/site/SiteLayout';
 import { FadeIn, AnimatedNumber } from '@/components/site/motion';
@@ -137,137 +138,241 @@ const HomeInner: React.FC = () => {
         </div>
       </section>
 
-      {/* Problem → Solution */}
-      <section className="bg-slate-50 py-24">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8">
-          <FadeIn className="text-center mb-14 max-w-2xl mx-auto">
-            <div className="text-[11px] uppercase tracking-[0.25em] text-royal font-semibold mb-3">
-              The shift
+      {/* Problem → Solution — premium fintech storytelling section.
+           Section header → 3-column layout (pain | live dashboard | solution) →
+           bottom trust bar. */}
+      <section className="relative bg-gradient-to-b from-white via-slate-50 to-white py-24 lg:py-28 overflow-hidden">
+        {/* Decorative dot grid in the corners */}
+        <div
+          className="absolute top-10 left-6 w-32 h-32 opacity-30 pointer-events-none"
+          style={{
+            backgroundImage: 'radial-gradient(circle at 1px 1px, rgb(11 28 61 / 0.18) 1px, transparent 0)',
+            backgroundSize: '14px 14px'
+          }}
+        />
+        <div
+          className="absolute top-10 right-6 w-32 h-32 opacity-30 pointer-events-none"
+          style={{
+            backgroundImage: 'radial-gradient(circle at 1px 1px, rgb(11 28 61 / 0.18) 1px, transparent 0)',
+            backgroundSize: '14px 14px'
+          }}
+        />
+
+        <div className="relative max-w-7xl mx-auto px-6 lg:px-8">
+
+          {/* ─── Section header ─────────────────────────── */}
+          <FadeIn className="text-center mb-14 max-w-3xl mx-auto">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-royal/10 border border-royal/20 text-royal text-[11px] font-bold uppercase tracking-[0.18em] mb-6">
+              Built for schools · Trusted by parents
             </div>
-            <h2 className="font-display text-3xl md:text-5xl font-bold text-navy tracking-tight">
-              From Excel sheets to <span className="text-royal">real-time reconciliation</span>
+            <h2 className="font-display text-3xl md:text-5xl lg:text-[3.25rem] font-bold text-navy tracking-tight leading-[1.1]">
+              From Excel sheets to <span className="bg-gradient-to-r from-royal to-royal-400 bg-clip-text text-transparent">real-time reconciliation</span>
             </h2>
+            <p className="mt-5 text-lg text-slate-600 leading-relaxed">
+              SchoolPay brings clarity, speed, and trust to every transaction.
+            </p>
+            <div className="mt-7 inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white border border-slate-200 shadow-sm text-[12px] font-semibold text-slate-700">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
+              </span>
+              Live in your dashboard
+            </div>
           </FadeIn>
 
-          {/*
-            Three-column "before / live / after" layout:
-              [ Pain card ]  ←  [ rotating dashboard widget ]  →  [ Solution card ]
-            On smaller screens we stack vertically: pain → widget → solution.
-          */}
-          <div className="grid lg:grid-cols-[1fr_minmax(360px,420px)_1fr] gap-6 items-stretch">
-            {/* Problem card — dark */}
+          {/* ─── 3-column layout ─────────────────────────── */}
+          <div className="grid lg:grid-cols-[1fr_1.3fr_1fr] gap-6 items-stretch">
+
+            {/* ░░ LEFT — Pain card ░░ */}
             <FadeIn>
-              <div className="relative bg-navy rounded-2xl p-8 md:p-10 text-white h-full overflow-hidden">
-                <div className="absolute -top-24 -right-24 w-64 h-64 rounded-full bg-red-500/10 blur-3xl pointer-events-none" />
+              <div className="group relative h-full bg-gradient-to-br from-navy via-navy to-navy-950 rounded-[24px] p-7 lg:p-8 text-white shadow-2xl shadow-navy/30 overflow-hidden hover:-translate-y-1 transition-all duration-500">
+                {/* Red glow bottom-right */}
+                <div className="absolute -bottom-20 -right-20 w-64 h-64 rounded-full bg-red-500/20 blur-3xl pointer-events-none" />
+                {/* Subtle top sheen */}
+                <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+
                 <div className="relative">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/15 border border-red-400/30 text-red-200 text-[11px] font-semibold uppercase tracking-widest mb-5">
-                    Today's pain
+                  <div className="inline-flex items-center gap-2 mb-7">
+                    <span className="w-7 h-7 rounded-full bg-red-500/20 border border-red-400/40 flex items-center justify-center">
+                      <AlertCircle className="w-3.5 h-3.5 text-red-300" />
+                    </span>
+                    <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-red-200">
+                      Today's manual workflow
+                    </span>
                   </div>
-                  <h3 className="font-display text-2xl md:text-3xl font-bold mb-6">
-                    The bursar's Friday problem
+                  <h3 className="font-display text-[26px] md:text-3xl font-bold leading-[1.1] mb-7">
+                    The bursar's <br /> Friday bottleneck
                   </h3>
-                  <ul className="space-y-4 text-slate-300">
+                  <ul className="space-y-4 text-[14px]">
                     {[
-                      'Parents send MoMo receipts over WhatsApp — one-by-one.',
-                      'Bursars type transaction IDs into Excel, sometimes twice.',
-                      'Duplicate payments go unnoticed; refunds take weeks.',
-                      'No audit trail when regulators or auditors come calling.',
-                      'Sales calls and bank meetings before you can even start.'
+                      'WhatsApp receipt screenshots arrive one-by-one',
+                      'Transaction IDs copied manually into Excel',
+                      'Duplicate payments go unnoticed',
+                      'No audit trail when regulators come calling',
+                      'Bank meetings required before activation'
                     ].map((p) => (
                       <li key={p} className="flex gap-3">
-                        <span className="shrink-0 mt-1 w-5 h-5 rounded-full bg-red-500/20 border border-red-400/40 flex items-center justify-center text-red-300 text-xs font-bold">×</span>
-                        <span className="leading-relaxed">{p}</span>
+                        <span className="shrink-0 mt-0.5 w-5 h-5 rounded-full bg-red-500/15 border border-red-400/30 flex items-center justify-center text-red-300 text-[11px] font-bold leading-none">×</span>
+                        <span className="text-slate-300 leading-relaxed">{p}</span>
                       </li>
                     ))}
                   </ul>
                 </div>
+
+                {/* Warning indicator bottom-right */}
+                <div className="absolute bottom-5 right-5 w-9 h-9 rounded-full bg-red-500/15 border border-red-400/30 flex items-center justify-center">
+                  <AlertCircle className="w-4 h-4 text-red-400" />
+                </div>
               </div>
             </FadeIn>
 
-            {/* Middle — rotating dashboard widget bridging the two cards */}
+            {/* ░░ CENTER — Live dashboard (15% larger via grid + lg:scale) ░░ */}
             <FadeIn delay={0.05}>
-              <div className="relative h-full flex flex-col items-center justify-center">
-                {/* Connector chips above & below — "PAIN" → product → "SOLVED" */}
-                <div className="hidden lg:flex absolute -top-3 left-1/2 -translate-x-1/2 z-10 items-center gap-1.5 px-3 py-1 rounded-full bg-gold text-navy text-[10px] font-bold uppercase tracking-widest shadow-lg">
-                  Live in your dashboard
-                </div>
-                <Card className="p-0 shadow-2xl border-slate-100 overflow-hidden relative bg-white text-slate-900 w-full">
-                  <div className="flex border-b border-slate-100 bg-slate-50/50">
-                    {([
-                      { id: 'overview', label: 'Overview', icon: Activity },
-                      { id: 'verify',   label: 'Verify', icon: Zap },
-                      { id: 'audit',    label: 'Audit', icon: History },
-                    ] as const).map((t) => {
-                      const active = heroTab === t.id;
-                      return (
-                        <button
-                          key={t.id}
-                          onClick={() => pickTab(t.id)}
-                          className={`relative flex-1 flex items-center justify-center gap-1.5 px-2 py-2.5 text-xs font-medium transition-colors ${
-                            active ? 'text-royal' : 'text-slate-500 hover:text-slate-900'
-                          }`}
-                        >
-                          <t.icon className="w-3.5 h-3.5" />
-                          {t.label}
-                          {active && (
-                            <motion.span
-                              layoutId="heroTabBar"
-                              className="absolute inset-x-3 bottom-0 h-0.5 bg-royal rounded-full"
-                              transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-                            />
-                          )}
-                        </button>
-                      );
-                    })}
+              <div className="relative h-full lg:scale-[1.04] origin-center transition-transform duration-500">
+                <div className="bg-white rounded-[28px] shadow-2xl shadow-navy/15 ring-1 ring-slate-200/70 overflow-hidden h-full flex flex-col">
+                  {/* Tab bar */}
+                  <div className="flex items-center justify-between border-b border-slate-100 px-2">
+                    <div className="flex">
+                      {([
+                        { id: 'overview', label: 'Overview',       icon: Activity },
+                        { id: 'verify',   label: 'Verify',         icon: ShieldCheck },
+                        { id: 'audit',    label: 'Audit',          icon: FileCheck }
+                      ] as const).map((t) => {
+                        const active = heroTab === t.id;
+                        return (
+                          <button
+                            key={t.id}
+                            onClick={() => pickTab(t.id)}
+                            className={`relative flex items-center gap-1.5 px-4 py-3 text-[12.5px] font-medium transition-colors ${
+                              active ? 'text-royal' : 'text-slate-500 hover:text-slate-900'
+                            }`}
+                          >
+                            <t.icon className="w-3.5 h-3.5" />
+                            {t.label}
+                            {active && (
+                              <motion.span
+                                layoutId="heroTabBar"
+                                className="absolute inset-x-2 bottom-0 h-[2px] bg-royal rounded-full"
+                                transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                              />
+                            )}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <button className="px-2 text-slate-400 hover:text-slate-600">
+                      <MoreHorizontal className="w-4 h-4" />
+                    </button>
                   </div>
-                  <div className="p-4 min-h-[360px]">
+
+                  <div className="px-6 pt-6 pb-5 flex-1">
                     <AnimatePresence mode="wait">
                       {heroTab === 'overview' && (
-                        <motion.div key="overview" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25 }}>
-                          <div className="flex items-start justify-between mb-4">
+                        <motion.div
+                          key="overview"
+                          initial={{ opacity: 0, y: 8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: -8 }}
+                          transition={{ duration: 0.25 }}
+                        >
+                          {/* Header: revenue + chart */}
+                          <div className="grid grid-cols-[1fr_auto] gap-5 items-end mb-5">
                             <div>
                               <div className="text-[11px] text-slate-500">Total Revenue</div>
-                              <div className="font-display text-2xl font-bold mt-0.5 tracking-tight">1,335,000 XAF</div>
+                              <div className="font-display text-[28px] font-bold tracking-tight text-navy mt-0.5">
+                                1,335,000 <span className="text-base text-slate-500 font-medium">XAF</span>
+                              </div>
+                              <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-emerald-50 border border-emerald-200 text-emerald-700 text-[11px] font-semibold">
+                                <TrendingUp className="w-3 h-3" /> 24.5%
+                                <span className="text-[10px] text-slate-500 font-normal ml-1">vs last 30 days</span>
+                              </div>
                             </div>
-                            <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-50 text-[10px]">
-                              <TrendingUp className="w-3 h-3 mr-1" /> +24.5%
-                            </Badge>
+                            {/* Mini line chart — animated draw on view */}
+                            <svg viewBox="0 0 140 50" className="w-[140px] h-[50px]">
+                              <defs>
+                                <linearGradient id="chartFill" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="0%" stopColor="#2563EB" stopOpacity="0.25" />
+                                  <stop offset="100%" stopColor="#2563EB" stopOpacity="0" />
+                                </linearGradient>
+                              </defs>
+                              <path d="M0,40 L20,32 L35,36 L52,28 L70,30 L88,18 L105,22 L122,12 L140,8 L140,50 L0,50 Z" fill="url(#chartFill)" />
+                              <path
+                                d="M0,40 L20,32 L35,36 L52,28 L70,30 L88,18 L105,22 L122,12 L140,8"
+                                fill="none"
+                                stroke="#2563EB"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeDasharray="300"
+                                strokeDashoffset="300"
+                              >
+                                <animate attributeName="stroke-dashoffset" from="300" to="0" dur="1.4s" begin="0.3s" fill="freeze" />
+                              </path>
+                              <circle cx="140" cy="8" r="3" fill="#2563EB">
+                                <animate attributeName="opacity" from="0" to="1" begin="1.6s" dur="0.3s" fill="freeze" />
+                              </circle>
+                            </svg>
                           </div>
-                          <div className="grid grid-cols-3 gap-2 mb-4">
-                            <div className="p-2 rounded-lg bg-yellow-50 border border-yellow-100">
-                              <div className="text-[10px] text-yellow-700 font-medium">MTN</div>
-                              <div className="font-bold text-sm mt-0.5">540K</div>
+
+                          {/* Provider segmentation cards */}
+                          <div className="grid grid-cols-3 gap-2 mb-5">
+                            <div className="rounded-xl bg-gradient-to-br from-yellow-50 to-yellow-50/50 border border-yellow-200 p-3">
+                              <div className="text-[10px] text-yellow-700 font-bold uppercase tracking-wider">MTN</div>
+                              <div className="font-display font-bold text-navy mt-1">540K</div>
+                              <div className="mt-1 inline-flex items-center gap-1 text-[10px] text-emerald-700 font-medium">
+                                <CheckCircle2 className="w-3 h-3" /> Settled
+                              </div>
                             </div>
-                            <div className="p-2 rounded-lg bg-orange-50 border border-orange-100">
-                              <div className="text-[10px] text-orange-700 font-medium">Orange</div>
-                              <div className="font-bold text-sm mt-0.5">660K</div>
+                            <div className="rounded-xl bg-gradient-to-br from-orange-50 to-orange-50/50 border border-orange-200 p-3">
+                              <div className="text-[10px] text-orange-700 font-bold uppercase tracking-wider">Orange</div>
+                              <div className="font-display font-bold text-navy mt-1">660K</div>
+                              <div className="mt-1 inline-flex items-center gap-1 text-[10px] text-emerald-700 font-medium">
+                                <CheckCircle2 className="w-3 h-3" /> Settled
+                              </div>
                             </div>
-                            <div className="p-2 rounded-lg bg-slate-50 border border-slate-100">
-                              <div className="text-[10px] text-slate-600 font-medium">Pending</div>
-                              <div className="font-bold text-sm mt-0.5">80K</div>
+                            <div className="rounded-xl bg-gradient-to-br from-slate-50 to-slate-100/50 border border-slate-200 p-3">
+                              <div className="text-[10px] text-slate-600 font-bold uppercase tracking-wider">Pending</div>
+                              <div className="font-display font-bold text-navy mt-1">80K</div>
+                              <div className="mt-1 inline-flex items-center gap-1 text-[10px] text-amber-700 font-medium">
+                                <Clock className="w-3 h-3" /> To verify
+                              </div>
                             </div>
                           </div>
-                          <div className="space-y-2.5">
+
+                          {/* Recent transactions */}
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="text-[12px] font-semibold text-navy">Recent Transactions</div>
+                            <button className="text-[11px] text-royal hover:underline font-medium">View all</button>
+                          </div>
+                          <div className="space-y-2">
                             {[
-                              { initial: 'A', grad: 'from-blue-400 to-indigo-500',  name: 'Amina Nkomo',   id: 'STU001', amount: '45,000',  status: 'verified', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-                              { initial: 'K', grad: 'from-emerald-400 to-teal-500', name: 'Kwame Mensah',  id: 'STU002', amount: '150,000', status: 'verified', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
-                              { initial: 'Z', grad: 'from-purple-400 to-pink-500',  name: 'Zainab Hassan', id: 'STU003', amount: '30,000',  status: 'pending',  cls: 'bg-amber-50 text-amber-700 border-amber-200' },
-                            ].map((r) => (
-                              <div key={r.id} className="flex items-center justify-between">
-                                <div className="flex items-center gap-2.5">
+                              { initial: 'A', grad: 'from-blue-400 to-indigo-500',  name: 'Amina Nkomo',   id: 'STU001', amount: '45,000',  status: 'Verified', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: CheckCircle2 },
+                              { initial: 'K', grad: 'from-emerald-400 to-teal-500', name: 'Kwame Mensah',  id: 'STU002', amount: '150,000', status: 'Verified', cls: 'bg-emerald-50 text-emerald-700 border-emerald-200', icon: CheckCircle2 },
+                              { initial: 'Z', grad: 'from-purple-400 to-pink-500',  name: 'Zainab Hassan', id: 'STU003', amount: '30,000',  status: 'Pending',  cls: 'bg-amber-50 text-amber-700 border-amber-200',         icon: Clock }
+                            ].map((r, i) => (
+                              <motion.div
+                                key={r.id}
+                                initial={{ opacity: 0, y: 6 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: 0.3 + i * 0.08, duration: 0.3 }}
+                                className="flex items-center justify-between py-1.5"
+                              >
+                                <div className="flex items-center gap-3">
                                   <div className={`w-8 h-8 rounded-full bg-gradient-to-br ${r.grad} flex items-center justify-center text-white font-bold text-xs`}>
                                     {r.initial}
                                   </div>
                                   <div>
-                                    <div className="font-medium text-xs">{r.name}</div>
-                                    <div className="text-[10px] text-slate-500">{r.id}</div>
+                                    <div className="font-medium text-[13px] text-navy">{r.name}</div>
+                                    <div className="text-[11px] text-slate-500">{r.id}</div>
                                   </div>
                                 </div>
-                                <div className="text-right">
-                                  <div className="font-semibold text-xs">{r.amount}</div>
-                                  <Badge variant="outline" className={`${r.cls} text-[9px] mt-0.5 hover:bg-inherit`}>{r.status}</Badge>
+                                <div className="flex items-center gap-3">
+                                  <div className="font-semibold text-[13px] text-navy">{r.amount} XAF</div>
+                                  <Badge variant="outline" className={`${r.cls} text-[10px] font-semibold inline-flex items-center gap-1 hover:bg-inherit`}>
+                                    <r.icon className="w-3 h-3" /> {r.status}
+                                  </Badge>
                                 </div>
-                              </div>
+                              </motion.div>
                             ))}
                           </div>
                         </motion.div>
@@ -275,34 +380,34 @@ const HomeInner: React.FC = () => {
 
                       {heroTab === 'verify' && (
                         <motion.div key="verify" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25 }}>
-                          <div className="text-[10px] text-slate-500 mb-1">Verify payment</div>
-                          <div className="font-display text-base font-bold mb-3">Submit a mobile-money receipt</div>
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2 p-2 rounded-lg border border-slate-200 bg-slate-50">
-                              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white font-bold text-xs">A</div>
+                          <div className="text-[11px] text-slate-500 mb-1">Verify payment</div>
+                          <div className="font-display text-xl font-bold text-navy mb-5">Submit a mobile-money receipt</div>
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50">
+                              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-400 to-indigo-500 flex items-center justify-center text-white font-bold text-sm">A</div>
                               <div className="flex-1">
-                                <div className="text-xs font-medium">Amina Nkomo</div>
-                                <div className="text-[10px] text-slate-500">STU001 · Grade 10</div>
+                                <div className="text-sm font-medium text-navy">Amina Nkomo</div>
+                                <div className="text-[11px] text-slate-500">STU001 · Grade 10</div>
                               </div>
                             </div>
-                            <div className="grid grid-cols-2 gap-2">
-                              <div className="p-2 rounded-lg border border-slate-200 bg-white text-xs flex items-center gap-1.5">
-                                <span className="w-2.5 h-2.5 rounded-full bg-yellow-500" /> MTN
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="p-2.5 rounded-xl border border-slate-200 bg-white text-sm flex items-center gap-2">
+                                <span className="w-3 h-3 rounded-full bg-yellow-500" /> MTN
                               </div>
-                              <div className="p-2 rounded-lg border border-slate-200 bg-white text-xs font-mono">MoMo-9F3A21</div>
+                              <div className="p-2.5 rounded-xl border border-slate-200 bg-white text-sm font-mono">MoMo-9F3A21</div>
                             </div>
-                            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.4 }} className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 flex items-center gap-2">
-                              <div className="w-8 h-8 rounded-full bg-emerald-500 flex items-center justify-center text-white">
-                                <CheckCircle2 className="w-4 h-4" />
+                            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.4 }} className="p-4 rounded-xl bg-gradient-to-br from-emerald-50 to-emerald-100/50 border border-emerald-200 flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-emerald-500 flex items-center justify-center text-white shadow-md">
+                                <CheckCircle2 className="w-5 h-5" />
                               </div>
                               <div className="flex-1">
-                                <div className="text-xs font-semibold text-emerald-900">Verified &amp; credited</div>
-                                <div className="text-[10px] text-emerald-800">45,000 XAF → balance: <b>90,000 XAF</b></div>
+                                <div className="text-sm font-semibold text-emerald-900">Verified &amp; credited</div>
+                                <div className="text-xs text-emerald-800">45,000 XAF → balance: <b>90,000 XAF</b></div>
                               </div>
-                              <Badge className="bg-emerald-600 hover:bg-emerald-600 text-[9px]">+45K</Badge>
+                              <Badge className="bg-emerald-600 hover:bg-emerald-600 text-[10px]">+45,000</Badge>
                             </motion.div>
-                            <div className="text-[10px] text-slate-500 flex items-center gap-1.5">
-                              <Lock className="w-3 h-3" /> Replay-protected
+                            <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
+                              <Lock className="w-3 h-3" /> Replay-protected: UNIQUE (school, provider, external_id)
                             </div>
                           </div>
                         </motion.div>
@@ -310,31 +415,31 @@ const HomeInner: React.FC = () => {
 
                       {heroTab === 'audit' && (
                         <motion.div key="audit" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25 }}>
-                          <div className="flex items-start justify-between mb-3">
+                          <div className="flex items-start justify-between mb-4">
                             <div>
-                              <div className="text-[10px] text-slate-500">Audit Log</div>
-                              <div className="font-display text-base font-bold mt-0.5">Recent activity</div>
+                              <div className="text-[11px] text-slate-500">Audit Log</div>
+                              <div className="font-display text-xl font-bold text-navy mt-0.5">Recent activity</div>
                             </div>
-                            <Badge variant="outline" className="text-[9px]">Live</Badge>
+                            <Badge variant="outline" className="text-[10px] font-semibold">Live</Badge>
                           </div>
-                          <ul className="space-y-2.5">
+                          <ul className="space-y-3">
                             {[
-                              { icon: CheckCircle2, color: 'text-emerald-600 bg-emerald-50', title: 'Payment verified', body: 'MoMo-9F3A21 · 45,000 XAF', time: 'now' },
-                              { icon: UserPlus,     color: 'text-blue-600 bg-blue-50',       title: 'Student added',    body: 'STU018 · Kofi Asante',   time: '2m' },
-                              { icon: Undo2,        color: 'text-red-600 bg-red-50',         title: 'Payment reversed', body: 'MoMo-88EF02 · −30,000',  time: '14m' },
-                              { icon: KeyRound,     color: 'text-amber-600 bg-amber-50',     title: 'API key rotated',  body: 'by an admin account',     time: '1h' },
-                              { icon: Webhook,      color: 'text-indigo-600 bg-indigo-50',   title: 'Webhook received', body: 'MTN · HMAC verified',     time: '1h' }
+                              { icon: CheckCircle2, color: 'text-emerald-600 bg-emerald-50', title: 'Payment verified', body: 'MoMo-9F3A21 · 45,000 XAF · Amina', time: 'now' },
+                              { icon: UserPlus,     color: 'text-blue-600 bg-blue-50',       title: 'Student added',    body: 'STU018 · Kofi Asante · Grade 11', time: '2m' },
+                              { icon: Undo2,        color: 'text-red-600 bg-red-50',         title: 'Payment reversed', body: 'MoMo-88EF02 · −30,000 XAF',       time: '14m' },
+                              { icon: KeyRound,     color: 'text-amber-600 bg-amber-50',     title: 'API key rotated',  body: 'by an admin account',              time: '1h' },
+                              { icon: Webhook,      color: 'text-indigo-600 bg-indigo-50',   title: 'Webhook received', body: 'MTN · HMAC verified',              time: '1h' }
                             ].map((row, i) => (
-                              <li key={i} className="flex gap-2.5 items-start">
-                                <div className={`w-7 h-7 rounded-lg ${row.color} flex items-center justify-center shrink-0`}>
-                                  <row.icon className="w-3.5 h-3.5" />
+                              <li key={i} className="flex gap-3 items-start">
+                                <div className={`w-8 h-8 rounded-lg ${row.color} flex items-center justify-center shrink-0`}>
+                                  <row.icon className="w-4 h-4" />
                                 </div>
                                 <div className="flex-1 min-w-0">
-                                  <div className="text-xs font-medium flex items-center justify-between gap-2">
+                                  <div className="text-[13px] font-medium text-navy flex items-center justify-between gap-2">
                                     <span>{row.title}</span>
-                                    <span className="text-[9px] text-slate-400 font-normal">{row.time}</span>
+                                    <span className="text-[10px] text-slate-400 font-normal">{row.time}</span>
                                   </div>
-                                  <div className="text-[10px] text-slate-500 truncate">{row.body}</div>
+                                  <div className="text-[11px] text-slate-500 truncate">{row.body}</div>
                                 </div>
                               </li>
                             ))}
@@ -343,39 +448,96 @@ const HomeInner: React.FC = () => {
                       )}
                     </AnimatePresence>
                   </div>
-                </Card>
+
+                  {/* Trust footer strip */}
+                  <div className="border-t border-slate-100 bg-slate-50/60 px-5 py-3 flex items-center justify-between text-[11px] text-slate-600 font-medium">
+                    <span className="inline-flex items-center gap-1.5"><Lock className="w-3.5 h-3.5 text-slate-500" /> Bank grade security</span>
+                    <span className="inline-flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5 text-slate-500" /> PCI-DSS Compliant</span>
+                    <span className="inline-flex items-center gap-1.5"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> 99.99% Uptime</span>
+                  </div>
+                </div>
               </div>
             </FadeIn>
 
-            {/* Solution card — light with gold accent */}
+            {/* ░░ RIGHT — Solution card ░░ */}
             <FadeIn delay={0.1}>
-              <div className="relative bg-white rounded-2xl p-8 md:p-10 h-full overflow-hidden border border-slate-200 shadow-lg shadow-slate-900/5">
-                <div className="absolute -top-24 -right-24 w-64 h-64 rounded-full bg-gold/15 blur-3xl pointer-events-none" />
+              <div className="group relative h-full bg-white rounded-[24px] p-7 lg:p-8 border border-slate-200 shadow-2xl shadow-slate-900/5 overflow-hidden hover:-translate-y-1 transition-all duration-500">
+                {/* Cream/gold gradient watermark in the upper-right */}
+                <div className="absolute -top-20 -right-20 w-72 h-72 rounded-full bg-gradient-to-br from-gold/15 via-amber-100/40 to-transparent blur-2xl pointer-events-none" />
+
                 <div className="relative">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gold/15 border border-gold/40 text-gold-600 text-[11px] font-semibold uppercase tracking-widest mb-5">
-                    SchoolPay way
+                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-bold uppercase tracking-[0.2em] mb-7">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                    SchoolPay automation
                   </div>
-                  <h3 className="font-display text-2xl md:text-3xl font-bold text-navy mb-6">
-                    Verified, credited, audited — in two seconds
+                  <h3 className="font-display text-[26px] md:text-3xl font-bold text-navy leading-[1.1] mb-7">
+                    Verified, credited, audited <br /> — in two seconds
                   </h3>
-                  <ul className="space-y-4 text-slate-700">
+                  <ul className="space-y-4 text-[14px]">
                     {[
-                      'Parents pay from any phone; we verify with the provider instantly.',
-                      'Student balance credited automatically — no re-keying.',
+                      'Payments verified instantly with providers.',
+                      'Student balances updated automatically — no re-keying.',
                       'Duplicate protection by design: UNIQUE(school, provider, tx_id).',
                       'Append-only audit log you can hand straight to auditors.',
-                      'Sign up in 60 seconds — no sales call, no bank meeting.'
-                    ].map((p) => (
-                      <li key={p} className="flex gap-3">
-                        <CheckCircle2 className="shrink-0 mt-0.5 w-5 h-5 text-royal" />
-                        <span className="leading-relaxed">{p}</span>
-                      </li>
+                      'Activation in under 60 seconds — no sales call, no bank meeting.'
+                    ].map((p, i) => (
+                      <motion.li
+                        key={p}
+                        initial={{ opacity: 0, x: -6 }}
+                        whileInView={{ opacity: 1, x: 0 }}
+                        viewport={{ once: true, margin: '-40px' }}
+                        transition={{ delay: 0.1 + i * 0.06, duration: 0.3 }}
+                        className="flex gap-3"
+                      >
+                        <span className="shrink-0 mt-0.5 w-5 h-5 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                        </span>
+                        <span className="text-slate-700 leading-relaxed">{p}</span>
+                      </motion.li>
                     ))}
                   </ul>
+                </div>
+
+                {/* Shield watermark bottom-right */}
+                <div className="absolute bottom-4 right-4 pointer-events-none">
+                  <div className="relative">
+                    <div className="absolute inset-0 bg-gradient-to-br from-emerald-200 to-emerald-300/40 rounded-full blur-2xl scale-150" />
+                    <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/30">
+                      <ShieldCheck className="w-7 h-7 text-white" strokeWidth={2.2} />
+                    </div>
+                    {/* Sparkles */}
+                    <Sparkles className="absolute -top-3 -left-4 w-3 h-3 text-emerald-300" />
+                    <Sparkles className="absolute -bottom-2 -right-3 w-2.5 h-2.5 text-emerald-400" />
+                  </div>
                 </div>
               </div>
             </FadeIn>
           </div>
+
+          {/* ─── Bottom trust bar ─────────────────────────── */}
+          <FadeIn delay={0.2} className="mt-12">
+            <div className="rounded-2xl bg-white border border-slate-200 shadow-sm px-6 py-5 grid grid-cols-2 md:grid-cols-5 gap-y-4 gap-x-6 items-center">
+              <div className="md:col-span-1 text-[12px] text-slate-500 font-medium">
+                Trusted by progressive schools &amp; networks
+              </div>
+              {[
+                { icon: Zap,         caption: 'Real-time',  label: 'Reconciliation' },
+                { icon: ShieldCheck, caption: 'Instant',    label: 'Verification' },
+                { icon: Layers,      caption: 'Zero',       label: 'Duplicates' },
+                { icon: FileCheck,   caption: '100%',       label: 'Auditable' }
+              ].map((t) => (
+                <div key={t.caption} className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-royal/10 text-royal flex items-center justify-center shrink-0">
+                    <t.icon className="w-5 h-5" strokeWidth={1.8} />
+                  </div>
+                  <div>
+                    <div className="text-[13px] font-bold text-navy leading-tight">{t.caption}</div>
+                    <div className="text-[11px] text-slate-500">{t.label}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </FadeIn>
         </div>
       </section>
 
