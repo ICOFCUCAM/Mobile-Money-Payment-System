@@ -41,18 +41,15 @@ async function login({ email, password, schoolSlug, totp }, ip) {
   const ok = await bcrypt.compare(password, user.password_hash);
   if (!ok) throw new AuthError('Invalid credentials');
 
-  // 2FA gate. Three cases:
-  //   1. User has TOTP enrolled and passed a valid code → proceed.
-  //   2. User has TOTP enrolled but didn't pass a code → respond
-  //      { requires2fa: 'verify' } (no token). Client re-submits with code.
-  //   3. 2FA is REQUIRED by policy but user hasn't enrolled → we still
-  //      issue a session token so they can reach /auth/2fa/setup, but we
-  //      tag the response with { mustEnroll2fa: true } so the UI shows a
-  //      banner until they finish enrollment.
-  const twofa = require('./twofa.service');
-  const mustHave2fa = twofa.isRequiredFor(user);
+  // 2FA gate. Belt-and-braces — wrap the require in a try so a missing
+  // dep (otplib/qrcode) doesn't take out every login.
+  let twofa = null;
+  try { twofa = require('./twofa.service'); }
+  catch (e) { logger.warn(`2FA module failed to load (${e.message}); proceeding without 2FA check`); }
+
+  const mustHave2fa = twofa ? twofa.isRequiredFor(user) : false;
   let mustEnroll2fa = false;
-  if (user.totp_secret) {
+  if (twofa && user.totp_secret) {
     if (!totp) return { requires2fa: 'verify' };
     if (!(await twofa.verifyCode(user, totp))) {
       writeAudit({ schoolId: school.id, userId: user.id, action: 'auth.2fa_failed', ip });
