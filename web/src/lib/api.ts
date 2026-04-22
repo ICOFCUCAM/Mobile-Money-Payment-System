@@ -62,13 +62,27 @@ async function request<T = unknown>(method: string, path: string, body?: unknown
   try { data = text ? JSON.parse(text) : null; } catch { data = { rawText: text }; }
 
   if (!res.ok) {
-    const msg = (data && data.error && data.error.message) || res.statusText;
+    // Compose the most informative message we can from whatever shape the
+    // server returned. For Vercel-level crashes (FUNCTION_INVOCATION_FAILED)
+    // the body is plaintext, not JSON — fall back to that, prefixed with the
+    // status code so it never reads as a generic empty string.
+    let msg: string;
+    if (data && data.error && data.error.message) {
+      msg = data.error.message;
+    } else if (data && data.rawText) {
+      msg = `HTTP ${res.status}: ${data.rawText.slice(0, 180)}`;
+    } else {
+      msg = `HTTP ${res.status}${res.statusText ? ` ${res.statusText}` : ''}`;
+    }
     const code = data && data.error && data.error.code;
     const err = new ApiError(msg, res.status, code, data?.error?.details);
     if (res.status === 401 && token) {
       // Expired / revoked — clear and let AuthContext's session-load pick it up.
       setToken(null);
     }
+    // Surface in console for inspection during debugging.
+    // eslint-disable-next-line no-console
+    console.error(`[api] ${method} ${path} →`, res.status, data || '(no body)');
     throw err;
   }
   return data as T;
