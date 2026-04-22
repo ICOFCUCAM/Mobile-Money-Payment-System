@@ -4,7 +4,6 @@ const path = require('path');
 const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
-const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
 
 const config = require('./config');
@@ -34,11 +33,12 @@ app.use(
 );
 app.use(cors({ origin: true, credentials: true }));
 app.use(cookieParser());
-app.use(
-  morgan(config.isProd ? 'combined' : 'dev', {
-    stream: { write: (msg) => logger.info(msg.trim()) }
-  })
-);
+
+// Structured request logging. Generates a trace_id per request, exposes it as
+// the `x-request-id` response header, and binds it (plus school_id/user_id
+// once auth runs) via AsyncLocalStorage so every downstream logger.* call
+// includes it automatically. Replaces the morgan access-log we had before.
+app.use(logger.requestLogger);
 
 // Capture raw body into req.rawBody so webhooks can verify provider signatures.
 app.use(

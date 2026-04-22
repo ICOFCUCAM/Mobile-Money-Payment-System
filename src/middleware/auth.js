@@ -5,6 +5,7 @@ const crypto = require('crypto');
 const config = require('../config');
 const { db } = require('../core/database');
 const { AuthError } = require('../core/errors');
+const logger = require('../core/logger');
 
 function signToken(payload) {
   return jwt.sign(payload, config.security.jwtSecret, { expiresIn: config.security.jwtExpiresIn });
@@ -51,7 +52,9 @@ async function authJwt(req, _res, next) {
 
     req.user = user;
     req.school = school;
-    next();
+    // Tag structured logs for the rest of this request with who's calling.
+    logger.withContext({ school_id: school.id, user_id: user.id }, () => next());
+    return;
   } catch (err) {
     next(err);
   }
@@ -71,7 +74,8 @@ async function authApiKey(req, _res, next) {
     if (!school) throw new AuthError('Invalid API key');
     req.school = school;
     req.authVia = 'api_key';
-    next();
+    logger.withContext({ school_id: school.id, auth_via: 'api_key' }, () => next());
+    return;
   } catch (err) {
     next(err);
   }
