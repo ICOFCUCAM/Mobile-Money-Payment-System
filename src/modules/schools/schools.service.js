@@ -111,6 +111,12 @@ async function registerSchool(payload, ip) {
     ip
   });
 
+  // Fire-and-forget welcome email. Log-only when RESEND_API_KEY is unset.
+  // Never block registration on the mailer.
+  require('../../core/email')
+    .sendWelcome({ to: payload.email, schoolName: payload.name, adminName: payload.adminName })
+    .catch(() => {});
+
   return { school: await getSchool(schoolId), apiKey: apiKey.raw };
 }
 

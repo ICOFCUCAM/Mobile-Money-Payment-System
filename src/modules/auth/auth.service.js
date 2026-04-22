@@ -175,8 +175,19 @@ async function requestPasswordReset({ email, schoolSlug }, ip) {
     ip
   });
 
-  // TODO: integrate a real mail service and remove the token from the response.
   logger.info(`Password reset token issued for ${emailLc} (expires ${expiresAt.toISOString()})`);
+
+  // Dispatch via Resend. Log-only when RESEND_API_KEY is unset — the
+  // plaintext token is then also returned in the response if
+  // PASSWORD_RESET_EXPOSE_TOKEN=1 (dev/smoke tests only).
+  const appUrl = process.env.APP_URL || process.env.VERCEL_URL || '';
+  const base = appUrl.startsWith('http') ? appUrl : (appUrl ? `https://${appUrl}` : '');
+  const resetUrl = `${base}/reset-password?token=${encodeURIComponent(token)}`;
+  const schoolRes = await db.query('SELECT name FROM schools WHERE id = $1', [user.school_id]);
+  const schoolName = schoolRes.rows[0] && schoolRes.rows[0].name;
+  require('../../core/email')
+    .sendPasswordReset({ to: user.email, resetUrl, schoolName })
+    .catch(() => {});
 
   const exposeToken = process.env.PASSWORD_RESET_EXPOSE_TOKEN === '1';
   return exposeToken ? { ok: true, token } : { ok: true };

@@ -182,6 +182,11 @@ async function recordWebhookTransaction(school, provider, event, rawBody) {
     metadata: { provider, externalId: event.externalId, status: event.status, amount }
   });
 
+  // Receipt email hook: src/core/email.js exposes sendPaymentReceipt. Not
+  // auto-called here because students don't yet carry a parent_email. Once
+  // we add that column (or decide SMS is the primary receipt channel),
+  // wire it here and in the existing-record upgrade path above.
+
   const inserted = await db.query('SELECT * FROM transactions WHERE id = $1', [txId]);
   return { created: true, transaction: inserted.rows[0] };
 }
