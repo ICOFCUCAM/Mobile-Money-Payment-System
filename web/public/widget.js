@@ -33,10 +33,33 @@
 
   if (!currentScript) return;
 
+  // Providers can be overridden via data-providers="MTN,ORANGE,AIRTEL,WAVE"
+  // so schools using networks we add on request can surface them in the widget
+  // without waiting for a new build. Format: comma-separated provider codes,
+  // optionally with friendly labels: "MTN|MTN MoMo,WAVE|Wave Money".
+  function parseProviders(raw) {
+    if (!raw) {
+      return [
+        { code: 'MTN',    label: 'MTN MoMo' },
+        { code: 'ORANGE', label: 'Orange Money' },
+        { code: 'AIRTEL', label: 'Airtel Money' }
+      ];
+    }
+    return String(raw).split(',').map(function (item) {
+      var parts = item.trim().split('|');
+      var code = parts[0].trim().toUpperCase();
+      var label = (parts[1] || parts[0]).trim();
+      return { code: code, label: label };
+    }).filter(function (p) { return p.code; });
+  }
+
+  var providers = parseProviders(currentScript.getAttribute('data-providers'));
+
   var config = {
     schoolId: currentScript.getAttribute('data-school-id') || '',
     apiKey: currentScript.getAttribute('data-api-key') || '',
-    provider: (currentScript.getAttribute('data-provider') || 'MTN').toUpperCase(),
+    provider: (currentScript.getAttribute('data-provider') || providers[0].code).toUpperCase(),
+    providers: providers,
     theme: (currentScript.getAttribute('data-theme') || 'light').toLowerCase(),
     apiBase:
       currentScript.getAttribute('data-api-base') ||
@@ -109,9 +132,9 @@
       '    <div>' +
       '      <label>Provider</label>' +
       '      <select name="provider">' +
-      '        <option value="MTN"' + (config.provider === 'MTN' ? ' selected' : '') + '>MTN MoMo</option>' +
-      '        <option value="ORANGE"' + (config.provider === 'ORANGE' ? ' selected' : '') + '>Orange Money</option>' +
-      '        <option value="AIRTEL"' + (config.provider === 'AIRTEL' ? ' selected' : '') + '>Airtel Money</option>' +
+      config.providers.map(function (p) {
+        return '<option value="' + p.code + '"' + (config.provider === p.code ? ' selected' : '') + '>' + p.label + '</option>';
+      }).join('') +
       '      </select>' +
       '    </div>' +
       '    <div>' +

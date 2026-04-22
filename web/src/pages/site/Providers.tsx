@@ -52,15 +52,16 @@ const ProvidersInner: React.FC = () => {
             Connect to Africa's <span className="text-gold">leading mobile money networks</span>
           </h1>
           <p className="mt-5 text-lg text-slate-300 max-w-2xl mx-auto">
-            One unified API for MTN, Orange, and Airtel. We handle the HMAC signatures, the replay protection, and
-            each provider's quirks — so you don't have to.
+            One unified API covering every major network on the continent — MTN, Orange, Airtel today;
+            Wave, M-Pesa, TigoCash and others added on request. We handle the HMAC signatures, the replay
+            protection, and each provider's quirks — so you don't have to.
           </p>
         </div>
       </section>
 
       {/* Provider cards */}
       <section className="bg-white py-24 border-b border-slate-200">
-        <div className="max-w-7xl mx-auto px-6 lg:px-8 grid md:grid-cols-3 gap-6">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8 grid md:grid-cols-2 lg:grid-cols-4 gap-6">
           {providers.map((p, i) => (
             <FadeIn key={p.name} delay={i * 0.08}>
               <div className="relative bg-white rounded-2xl border border-slate-200 p-7 h-full hover:shadow-2xl hover:shadow-navy/10 hover:-translate-y-1 transition-all duration-300">
@@ -90,6 +91,36 @@ const ProvidersInner: React.FC = () => {
               </div>
             </FadeIn>
           ))}
+
+          {/*
+            Extensibility card — we support MTN/Orange/Airtel today and add
+            new networks on request. The dashed border + gold accent signals
+            "new network" without pretending it's live yet.
+          */}
+          <FadeIn delay={0.24}>
+            <div className="relative rounded-2xl p-7 h-full border-2 border-dashed border-gold/50 bg-gradient-to-br from-gold/10 to-white hover:border-gold hover:bg-gold/5 transition-all duration-300 hover:-translate-y-1">
+              <div className="flex items-start justify-between mb-5">
+                <div className="w-14 h-14 rounded-xl bg-gold/15 text-gold-600 flex items-center justify-center ring-1 ring-gold/40 shadow-inner">
+                  <Sparkles className="w-6 h-6" />
+                </div>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gold/15 border border-gold/40 text-gold-600 text-[10px] font-bold uppercase tracking-widest">
+                  On request
+                </div>
+              </div>
+              <h3 className="font-display text-xl font-bold text-navy">+ Add your network</h3>
+              <div className="text-sm text-gold-600 mt-0.5 font-semibold">Ships in under a week</div>
+              <p className="text-sm text-slate-600 mt-4 leading-relaxed">
+                Wave, M-Pesa, TigoCash, Moov Money, Afrimoney, MoMo Pay — anything with an API. Our
+                <code className="bg-slate-100 px-1 rounded text-[11px] mx-1">BaseProvider</code>
+                abstraction means plugging in a new network takes days, not months.
+              </p>
+              <div className="mt-5 flex flex-wrap gap-1.5">
+                {['Wave', 'M-Pesa', 'TigoCash', 'Moov', 'Afrimoney'].map((n) => (
+                  <span key={n} className="text-[11px] px-2.5 py-1 rounded-full bg-slate-100 text-slate-700 font-medium">{n}</span>
+                ))}
+              </div>
+            </div>
+          </FadeIn>
         </div>
       </section>
 

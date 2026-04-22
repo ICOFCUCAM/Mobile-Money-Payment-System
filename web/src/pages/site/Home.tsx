@@ -52,9 +52,10 @@ const HomeInner: React.FC = () => {
               <span className="text-gold">Powered by Mobile Money.</span>
             </h1>
             <p className="mt-6 text-lg text-slate-300 leading-relaxed">
-              SchoolPay is the payment infrastructure for African schools — one API that integrates
-              MTN MoMo, Orange Money and Airtel Money, verifies every receipt, credits the student,
-              and hands your bursar a real-time audit trail.
+              SchoolPay is the payment infrastructure for African schools — one API that connects to every
+              major mobile-money network on the continent (MTN MoMo, Orange Money, Airtel Money — with new
+              networks added every quarter), verifies every receipt, credits the student, and hands your
+              bursar a real-time audit trail.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Button
@@ -639,7 +640,7 @@ const HomeInner: React.FC = () => {
             </p>
           </FadeIn>
 
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
               {
                 name: 'MTN Mobile Money',
@@ -686,6 +687,30 @@ const HomeInner: React.FC = () => {
                 </div>
               </FadeIn>
             ))}
+
+            {/*
+              Fourth card makes extensibility explicit: any new network can
+              be plugged in via our BaseProvider abstraction. Dashed border
+              + gold accent signals "slot available" rather than "live now".
+            */}
+            <FadeIn delay={0.24}>
+              <div className="relative rounded-2xl p-7 h-full border-2 border-dashed border-gold/40 bg-gradient-to-br from-gold/[0.06] to-transparent hover:border-gold hover:bg-gold/[0.1] transition-all duration-300 hover:-translate-y-1">
+                <div className="flex items-start justify-between mb-5">
+                  <div className="w-14 h-14 rounded-xl bg-gold/15 text-gold flex items-center justify-center font-display font-bold shadow-inner ring-1 ring-gold/30">
+                    <Sparkles className="w-6 h-6" />
+                  </div>
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-gold/15 border border-gold/40 text-gold text-[10px] font-semibold uppercase tracking-widest">
+                    New
+                  </div>
+                </div>
+                <h3 className="font-display text-xl font-bold text-white">+ Your network</h3>
+                <div className="text-sm text-gold mt-0.5 font-semibold">Ships in under a week</div>
+                <p className="text-sm text-slate-300 mt-4 leading-relaxed">
+                  Wave, M-Pesa, TigoCash, Moov Money — our <code className="bg-white/10 px-1 rounded text-[11px]">BaseProvider</code> abstraction
+                  means new networks plug in without touching your app.
+                </p>
+              </div>
+            </FadeIn>
           </div>
 
           <FadeIn className="text-center mt-12">
@@ -906,8 +931,8 @@ const HomeInner: React.FC = () => {
               },
               {
                 icon: CreditCard,
-                title: 'Multi-provider support',
-                body: 'MTN, Orange, Airtel through one unified API. Add a new network with a single credential swap — no re-wiring your app.',
+                title: 'Every major network — extensible',
+                body: 'MTN, Orange, Airtel today; Wave, M-Pesa, TigoCash tomorrow. New providers plug into our BaseProvider abstraction in under a week — no rewrites on your side.',
                 accent: 'bg-gold/15 text-gold-600 group-hover:bg-gold group-hover:text-navy'
               },
               {

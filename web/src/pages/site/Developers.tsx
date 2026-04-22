@@ -71,8 +71,11 @@ const restResponse = `{
 const htmlForm = `<form id="fees">
   <input name="student_id" placeholder="Student ID" required />
   <select name="provider">
+    <!-- Any provider code your tenant has configured -->
     <option>MTN</option>
     <option>ORANGE</option>
+    <option>AIRTEL</option>
+    <!-- Request a new network and we'll plug it in in days. -->
   </select>
   <input name="transaction_id" placeholder="Transaction ID" required />
   <button type="submit">Verify payment</button>

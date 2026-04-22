@@ -52,13 +52,13 @@ const FeaturesInner: React.FC = () => {
       <FeatureSection
         id="providers"
         label="Multi-provider integration"
-        title="MTN, Orange, Airtel — one API"
-        body="Plug in any provider's credentials; we handle the quirks. Add a new network without re-wiring your app. Webhooks come HMAC-verified out of the box."
+        title="Every major network, one API — extensible"
+        body="MTN, Orange, Airtel today; Wave, M-Pesa, TigoCash, Moov Money, Afrimoney and others on request. Plug in any provider's credentials; we handle the quirks. Add a new network without re-wiring your app. Webhooks come HMAC-verified out of the box."
         items={[
-          { icon: CreditCard, title: 'MTN MoMo' },
-          { icon: CreditCard, title: 'Orange Money' },
-          { icon: CreditCard, title: 'Airtel Money' },
-          { icon: Webhook, title: 'HMAC-verified webhooks' }
+          { icon: CreditCard, title: 'MTN MoMo · live' },
+          { icon: CreditCard, title: 'Orange Money · live' },
+          { icon: CreditCard, title: 'Airtel Money · live' },
+          { icon: CreditCard, title: '+ Your network · days' }
         ]}
         accent="gold"
         reverse
