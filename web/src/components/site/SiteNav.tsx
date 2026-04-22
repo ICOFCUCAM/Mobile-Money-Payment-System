@@ -37,10 +37,10 @@ export const SiteNav: React.FC<Props> = ({ onSignIn, onGetStarted }) => {
 
   return (
     <nav
-      className={`sticky top-0 z-50 transition-all duration-300 ${
+      className={`sticky top-0 z-50 transition-all duration-300 backdrop-blur-md ${
         solid
-          ? 'bg-navy/95 backdrop-blur-md border-b border-white/10 shadow-lg shadow-navy/20'
-          : 'bg-transparent border-b border-transparent'
+          ? 'bg-navy/95 border-b border-white/10 shadow-lg shadow-navy/20'
+          : 'bg-navy/60 border-b border-white/5'
       }`}
     >
       <div className="max-w-7xl mx-auto px-6 lg:px-8 h-16 flex items-center justify-between">

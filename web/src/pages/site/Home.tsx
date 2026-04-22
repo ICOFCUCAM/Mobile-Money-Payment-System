@@ -765,16 +765,16 @@ const HomeInner: React.FC = () => {
                   Pay per student
                 </h3>
                 <p className="text-sm text-slate-600 leading-relaxed mb-6">
-                  Your wallet is debited $6 per active student at the start of each academic year.
-                  No monthly commitment — ideal for small schools and seasonal intakes.
+                  Marginal-tier pricing: <b>$4/student</b> for your first 100 students,
+                  <b> $6/student</b> for students 101–150. Debited once per academic year.
                 </p>
 
                 <ul className="space-y-2.5 mb-8 text-sm text-slate-700">
                   {[
-                    'Pay per active student, once a year',
-                    'No monthly commitment',
+                    '$4 per student · first 100',
+                    '$6 per student · 101–150',
                     'Wallet balance never expires',
-                    'Prorated top-ups mid-year'
+                    'Over 150? Postpaid Basic is cheaper'
                   ].map((f) => (
                     <li key={f} className="flex items-start gap-2">
                       <CheckCircle2 className="w-4 h-4 text-royal mt-0.5 shrink-0" /> {f}
@@ -784,8 +784,8 @@ const HomeInner: React.FC = () => {
 
                 <div className="pt-5 border-t border-slate-100 flex items-end justify-between">
                   <div>
-                    <div className="text-3xl font-display font-bold text-navy">$6<span className="text-base font-normal text-slate-500">/student/yr</span></div>
-                    <div className="text-xs text-slate-500 mt-1">Best under ~100 students</div>
+                    <div className="text-3xl font-display font-bold text-navy">From $4<span className="text-base font-normal text-slate-500">/student/yr</span></div>
+                    <div className="text-xs text-slate-500 mt-1">$4 first 100, $6 after · up to 150</div>
                   </div>
                 </div>
 

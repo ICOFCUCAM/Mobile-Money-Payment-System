@@ -6,8 +6,31 @@ import {
   CheckCircle2, ArrowRight, Users, CalendarClock, Shield, Server,
   Sparkles, Info, Lock, Building2, GraduationCap, BadgeCheck
 } from 'lucide-react';
+import { Slider } from '@/components/ui/slider';
 import { SiteLayoutWithAuthCtx, useAuthDialog } from '@/components/site/SiteLayout';
 import { FadeIn } from '@/components/site/motion';
+
+// Prepaid pricing tiers — first 100 students at $4/yr, next 50 at $6/yr.
+// Above 150 students, Postpaid Basic ($190/yr for up to 150) is always
+// better, so we cap Prepaid at 150 on the UI and nudge schools upward.
+const PREPAID_T1_RATE = 4;   // per student for students 1–100
+const PREPAID_T2_RATE = 6;   // per student for students 101–150
+const PREPAID_T1_CAP  = 100;
+const PREPAID_T2_CAP  = 150;
+
+function prepaidCost(students: number): {
+  tier1Count: number;
+  tier2Count: number;
+  tier1Sub: number;
+  tier2Sub: number;
+  total: number;
+} {
+  const tier1Count = Math.min(students, PREPAID_T1_CAP);
+  const tier2Count = Math.max(0, Math.min(students, PREPAID_T2_CAP) - PREPAID_T1_CAP);
+  const tier1Sub = tier1Count * PREPAID_T1_RATE;
+  const tier2Sub = tier2Count * PREPAID_T2_RATE;
+  return { tier1Count, tier2Count, tier1Sub, tier2Sub, total: tier1Sub + tier2Sub };
+}
 
 type Tab = 'prepaid' | 'subscription' | 'license';
 type Billing = 'monthly' | 'yearly';
@@ -118,67 +141,130 @@ const PricingInner: React.FC = () => {
 };
 
 /* ═══ MODEL 1: PREPAID ═══════════════════════════════════════════════════ */
-const PrepaidPanel: React.FC<{ onStart: () => void }> = ({ onStart }) => (
-  <motion.div
-    initial={{ opacity: 0, y: 10 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, y: -10 }}
-    transition={{ duration: 0.25 }}
-    className="rounded-3xl bg-white border border-slate-200 shadow-lg shadow-slate-900/5 overflow-hidden"
-  >
-    <div className="grid lg:grid-cols-[1fr_1fr] gap-8 p-8 lg:p-12 items-center">
-      {/* Left — details */}
-      <div>
-        <div className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.2em] text-royal mb-3">
-          <div className="w-6 h-6 rounded-md bg-royal/10 flex items-center justify-center">
-            <Users className="w-3.5 h-3.5" />
+const PrepaidPanel: React.FC<{ onStart: () => void }> = ({ onStart }) => {
+  const [students, setStudents] = useState(80);
+  const { tier1Count, tier2Count, tier1Sub, tier2Sub, total } = prepaidCost(students);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+      transition={{ duration: 0.25 }}
+      className="rounded-3xl bg-white border border-slate-200 shadow-lg shadow-slate-900/5 overflow-hidden"
+    >
+      <div className="grid lg:grid-cols-[1fr_1fr] gap-8 p-8 lg:p-12 items-center">
+        {/* Left — pricing */}
+        <div>
+          <div className="inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.2em] text-royal mb-3">
+            <div className="w-6 h-6 rounded-md bg-royal/10 flex items-center justify-center">
+              <Users className="w-3.5 h-3.5" />
+            </div>
+            Prepaid
           </div>
-          Prepaid
+          <h3 className="font-display text-3xl md:text-4xl font-bold text-navy tracking-tight">
+            Pay per student
+          </h3>
+          <p className="mt-3 text-slate-600 leading-relaxed max-w-md">
+            Perfect for small schools and seasonal intakes. Pay $4 per student per year while
+            you're small; the rate ticks up to $6 for students 101–150 to cushion the jump to
+            our Postpaid Basic plan.
+          </p>
+
+          {/* Two-tier price blocks */}
+          <div className="mt-7 grid grid-cols-2 gap-3 max-w-md">
+            <div className="rounded-xl border border-royal/30 bg-royal/5 p-4">
+              <div className="text-[10px] uppercase tracking-widest font-bold text-royal">Tier 1</div>
+              <div className="mt-1 font-display text-3xl font-bold text-navy">$4</div>
+              <div className="text-[11px] text-slate-600 leading-tight">per student / year<br/>first 100 students</div>
+            </div>
+            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+              <div className="text-[10px] uppercase tracking-widest font-bold text-slate-600">Tier 2</div>
+              <div className="mt-1 font-display text-3xl font-bold text-navy">$6</div>
+              <div className="text-[11px] text-slate-600 leading-tight">per student / year<br/>students 101–150</div>
+            </div>
+          </div>
+
+          <ul className="mt-7 space-y-2.5 max-w-md">
+            {[
+              'Wallet debited once per academic year',
+              'Marginal tiers — every student only charged at its own rate',
+              'Balance never expires; top up anytime',
+              'Over 150 students? Postpaid Basic ($190/yr) is cheaper'
+            ].map((f) => (
+              <li key={f} className="flex items-start gap-2.5 text-[13.5px] text-slate-700">
+                <span className="shrink-0 mt-0.5 w-5 h-5 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                </span>
+                {f}
+              </li>
+            ))}
+          </ul>
+
+          <Button
+            className="mt-8 w-full max-w-md bg-white hover:bg-royal hover:text-white border-2 border-royal text-royal font-semibold"
+            onClick={onStart}
+          >
+            Get Started
+          </Button>
         </div>
-        <h3 className="font-display text-3xl md:text-4xl font-bold text-navy tracking-tight">
-          Pay per student
-        </h3>
-        <p className="mt-3 text-slate-600 leading-relaxed max-w-md">
-          Perfect for schools under ~100 students or seasonal intakes. Your wallet is debited
-          $6 per active student at the start of each academic year — top up ahead, never
-          mid-term surprises.
-        </p>
 
-        <div className="mt-8 flex items-baseline gap-2">
-          <span className="font-display text-5xl font-bold text-navy">$6.00</span>
-          <span className="text-slate-500 text-sm">/ student / year</span>
-          <Info className="w-3.5 h-3.5 text-slate-400" />
+        {/* Right — live calculator + illustration */}
+        <div className="space-y-6">
+          {/* Live cost calculator */}
+          <div className="rounded-2xl bg-gradient-to-br from-navy via-navy to-navy-950 p-6 lg:p-7 text-white shadow-xl shadow-navy/25">
+            <div className="flex items-center justify-between mb-5">
+              <div>
+                <div className="text-[10px] uppercase tracking-widest text-gold font-bold">
+                  Wallet calculator
+                </div>
+                <div className="mt-1 font-display text-3xl font-bold">{students} students</div>
+              </div>
+              <div className="text-right">
+                <div className="text-[10px] uppercase tracking-widest text-slate-400">Annual cost</div>
+                <div className="mt-1 font-display text-3xl font-bold text-gold">${total}</div>
+              </div>
+            </div>
+
+            <Slider
+              value={[students]}
+              onValueChange={(v) => setStudents(v[0])}
+              min={10}
+              max={PREPAID_T2_CAP}
+              step={5}
+              className="mt-4"
+            />
+            <div className="mt-2 flex justify-between text-[10px] text-slate-400">
+              <span>10</span>
+              <span>100 <span className="text-gold/80">(tier jump)</span></span>
+              <span>150 (cap)</span>
+            </div>
+
+            {/* Breakdown */}
+            <div className="mt-5 rounded-xl bg-white/5 border border-white/10 p-4 text-[13px] space-y-2">
+              <div className="flex items-center justify-between text-slate-300">
+                <span>Students 1–{tier1Count} × $4</span>
+                <span className="font-mono text-white">${tier1Sub}</span>
+              </div>
+              {tier2Count > 0 && (
+                <div className="flex items-center justify-between text-slate-300">
+                  <span>Students 101–{PREPAID_T1_CAP + tier2Count} × $6</span>
+                  <span className="font-mono text-white">${tier2Sub}</span>
+                </div>
+              )}
+              <div className="pt-2 border-t border-white/10 flex items-center justify-between font-semibold">
+                <span>Year 1 total</span>
+                <span className="font-mono text-gold">${total}</span>
+              </div>
+            </div>
+          </div>
+
+          <PrepaidIllustration />
         </div>
-
-        <ul className="mt-7 space-y-3 max-w-md">
-          {[
-            'Pay per active student, once a year',
-            'No monthly commitment',
-            'Wallet balance never expires',
-            'Prorated top-ups for mid-year enrolments'
-          ].map((f) => (
-            <li key={f} className="flex items-start gap-2.5 text-[14px] text-slate-700">
-              <span className="shrink-0 mt-0.5 w-5 h-5 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center">
-                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-              </span>
-              {f}
-            </li>
-          ))}
-        </ul>
-
-        <Button
-          className="mt-8 w-full max-w-md bg-white hover:bg-royal hover:text-white border-2 border-royal text-royal font-semibold"
-          onClick={onStart}
-        >
-          Get Started
-        </Button>
       </div>
-
-      {/* Right — illustration */}
-      <PrepaidIllustration />
-    </div>
-  </motion.div>
-);
+    </motion.div>
+  );
+};
 
 /** Decorative payment illustration with 4 avatar bubbles orbiting a $2 receipt. */
 const PrepaidIllustration: React.FC = () => {
@@ -189,7 +275,7 @@ const PrepaidIllustration: React.FC = () => {
     { top: '55%', left: '5%',  grad: 'from-purple-400 to-pink-500',   initial: 'M' }
   ];
   return (
-    <div className="relative w-full h-[340px] hidden lg:block">
+    <div className="relative w-full h-[240px] hidden lg:block">
       <svg className="absolute inset-0 w-full h-full" viewBox="0 0 400 340">
         <circle cx="200" cy="170" r="150" fill="none" stroke="#94a3b8" strokeWidth="1.2" strokeDasharray="3 5" opacity="0.5" />
         <circle cx="200" cy="170" r="110" fill="none" stroke="#cbd5e1" strokeWidth="1"   strokeDasharray="3 5" opacity="0.5" />
