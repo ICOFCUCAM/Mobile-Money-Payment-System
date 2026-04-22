@@ -29,13 +29,11 @@ const HomeInner: React.FC = () => {
   return (
     <>
       {/* Hero */}
-      <section className="relative bg-slate-900">
+      <section className="relative bg-navy">
         {/*
-         * Clean photograph of African children going to school. We don't wash
-         * the whole image — only the two overlay cards (headline on the left,
-         * the rotating dashboard widget on the right) have their own frosted
-         * backdrop so the rest of the photograph stays sharp and readable.
-         * Falls back to the dark slate section background if the CDN is blocked.
+         * Clean photograph of African children going to school. The image is not
+         * blurred or washed. A narrow left-side navy gradient gives the headline
+         * enough contrast without dimming the rest of the photograph.
          */}
         <img
           src="https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=2000&q=85"
@@ -43,34 +41,47 @@ const HomeInner: React.FC = () => {
           className="absolute inset-0 w-full h-full object-cover"
           onError={(e) => { (e.currentTarget.style.display = 'none'); }}
         />
+        {/* Left-biased navy vignette — keeps the text edge readable while the
+            right-side photo stays clean under the dashboard widget. */}
+        <div className="absolute inset-0 bg-gradient-to-r from-navy/80 via-navy/30 to-transparent pointer-events-none" />
 
-        <div className="relative max-w-7xl mx-auto px-6 py-20 lg:py-28 grid lg:grid-cols-[1.1fr_1fr] gap-10 items-center">
-          {/* Headline — no box, transparent. Text sits directly on the photograph,
-              with a drop-shadow so it stays legible against any part of the image. */}
-          <div className="text-white [text-shadow:0_2px_12px_rgba(0,0,0,0.55)]">
-            <Badge variant="outline" className="bg-white/10 text-blue-100 border-white/30 font-medium mb-5">
-              Multi-Tenant Fintech Infrastructure
-            </Badge>
-            <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.05]">
-              School Payments,<br />
-              <span className="text-blue-300">Unified &<br />Automated.</span>
+        <div className="relative max-w-7xl mx-auto px-6 lg:px-8 py-24 lg:py-32 grid lg:grid-cols-[1.15fr_1fr] gap-12 items-center">
+          {/* Headline — transparent, sits directly on the photo */}
+          <div className="text-white [text-shadow:0_2px_16px_rgba(11,28,61,0.65)]">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gold/15 border border-gold/40 text-gold text-[11px] font-semibold uppercase tracking-widest mb-6">
+              <span className="w-1.5 h-1.5 rounded-full bg-gold animate-pulse" /> Mobile-money native
+            </div>
+            <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.04]">
+              School Payments.<br />
+              Built for <span className="text-royal-400">Africa</span>.<br />
+              <span className="text-gold">Powered by Mobile Money.</span>
             </h1>
-            <p className="mt-6 text-lg text-blue-50/95 leading-relaxed max-w-xl">
-              The complete SaaS platform for schools to accept mobile money payments from MTN,
-              Orange, and Airtel — with automatic verification, student credit, and real-time dashboards.
+            <p className="mt-6 text-lg text-slate-200 leading-relaxed max-w-xl">
+              SchoolPay is the payment infrastructure for African schools — one API that integrates
+              MTN MoMo, Orange Money and Airtel Money, verifies every receipt, credits the student,
+              and hands your bursar a real-time audit trail.
             </p>
-            <div className="mt-7 flex flex-wrap gap-3 [text-shadow:none]">
-              <Button size="lg" className="bg-blue-600 hover:bg-blue-500 shadow-lg" onClick={() => setMode('register')}>
-                Start Free Trial <ArrowRight className="w-4 h-4 ml-1" />
+            <div className="mt-8 flex flex-wrap gap-3 [text-shadow:none]">
+              <Button
+                size="lg"
+                className="bg-royal hover:bg-royal-700 text-white font-semibold shadow-lg shadow-royal/40"
+                onClick={() => setMode('register')}
+              >
+                Start Free Trial <ArrowRight className="w-4 h-4 ml-1.5" />
               </Button>
-              <Button asChild size="lg" variant="outline" className="bg-white/10 border-white/40 text-white hover:bg-white/20 hover:text-white">
-                <Link to="/developers">See Developer Docs</Link>
+              <Button
+                asChild
+                size="lg"
+                variant="outline"
+                className="bg-white/5 border-white/30 text-white hover:bg-white/15 hover:text-white"
+              >
+                <Link to="/developers">View Documentation</Link>
               </Button>
             </div>
-            <div className="mt-7 flex items-center gap-6 text-sm text-blue-100 flex-wrap">
-              <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-emerald-400" /> No credit card</span>
-              <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-emerald-400" /> 14-day trial</span>
-              <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-emerald-400" /> Setup in minutes</span>
+            <div className="mt-8 flex items-center gap-6 text-sm text-slate-200 flex-wrap">
+              <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-gold" /> 14-day free trial</span>
+              <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-gold" /> No credit card</span>
+              <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-gold" /> Setup in minutes</span>
             </div>
           </div>
 
