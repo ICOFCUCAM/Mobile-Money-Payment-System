@@ -5,6 +5,7 @@ const ctrl = require('./billing.controller');
 const asyncHandler = require('../../utils/asyncHandler');
 const { authJwt } = require('../../middleware/auth');
 const { requireRole } = require('../../middleware/rbac');
+const { idempotent } = require('../../middleware/idempotency');
 
 const router = express.Router();
 
@@ -16,7 +17,11 @@ router.get('/fx',      asyncHandler(ctrl.fxQuote));
 // The rest of the billing API is JWT-authed tenant-scoped.
 router.use(authJwt);
 
-router.post('/intents',       asyncHandler(ctrl.createIntent));
+// Idempotent POST — clients can safely retry a failed checkout call as
+// long as they reuse the Idempotency-Key header (typically a UUID).
+router.post('/intents',
+  idempotent({ scope: (req) => `school:${req.school.id}:intents` }),
+  asyncHandler(ctrl.createIntent));
 router.get('/wallet',         asyncHandler(ctrl.getWallet));
 
 // Admin platform routes — caller must be admin AND belong to the

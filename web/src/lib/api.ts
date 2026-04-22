@@ -45,6 +45,17 @@ async function request<T = unknown>(method: string, path: string, body?: unknown
     payload = JSON.stringify(body);
   }
 
+  // Auto-attach Idempotency-Key on every unsafe method so retries from
+  // transient network errors don't double-execute (duplicate billing
+  // intents, duplicate payment verifications, etc.). The server echoes
+  // the first response for any repeat of the same key within 24h.
+  if (method !== 'GET' && method !== 'HEAD' && !headers['Idempotency-Key']) {
+    headers['Idempotency-Key'] =
+      (typeof crypto !== 'undefined' && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  }
+
   const res = await fetch(`/api${path}`, { method, headers, body: payload });
   const text = await res.text();
   let data: any = null;

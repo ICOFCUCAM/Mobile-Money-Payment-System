@@ -197,6 +197,23 @@ CREATE TABLE IF NOT EXISTS wallet_transactions (
 CREATE INDEX IF NOT EXISTS idx_wallet_tx_school ON wallet_transactions(school_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_wallet_tx_intent ON wallet_transactions(billing_intent_id);
 
+-- Idempotency keys. One row per (scope, key). Scope groups keys by
+-- caller (e.g. school_id) so two different tenants can reuse the same
+-- UUID without collision. The stored response lets us replay the exact
+-- same status/body/headers on retry without re-executing the handler.
+CREATE TABLE IF NOT EXISTS idempotency_keys (
+  id              BIGSERIAL PRIMARY KEY,
+  scope           TEXT NOT NULL,       -- 'school:<id>' or 'anon:<ip>' etc.
+  key             TEXT NOT NULL,
+  request_hash    TEXT NOT NULL,       -- SHA-256 of body — same-key-different-body ⇒ 409
+  status_code     INTEGER,
+  response_body   JSONB,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  expires_at      TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '24 hours'),
+  UNIQUE (scope, key)
+);
+CREATE INDEX IF NOT EXISTS idx_idempotency_expires ON idempotency_keys(expires_at);
+
 -- Seed the internal "SchoolPay Billing" tenant on first boot. This is the
 -- special school that OWNS the corporate MoMo accounts; every subscription
 -- and top-up payment is an incoming transaction on this tenant.
