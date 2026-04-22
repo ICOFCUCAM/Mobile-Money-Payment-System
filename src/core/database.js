@@ -144,6 +144,23 @@ ALTER TABLE schools ADD COLUMN IF NOT EXISTS is_billing_tenant   BOOLEAN NOT NUL
 --   license  → one-off purchase; license_tier holds 1|2|3-5|5-10|10p
 ALTER TABLE schools ADD COLUMN IF NOT EXISTS billing_model       TEXT NOT NULL DEFAULT 'postpaid';
 ALTER TABLE schools ADD COLUMN IF NOT EXISTS license_tier        TEXT;
+
+-- 2FA — per-user TOTP secret. Required for platform admins (caller must
+-- belong to the schoolpay-billing tenant). Optional but recommended for
+-- school admins. The secret is encrypted at rest (same AES-256-GCM key
+-- we use for provider credentials).
+ALTER TABLE users   ADD COLUMN IF NOT EXISTS totp_secret          TEXT;
+ALTER TABLE users   ADD COLUMN IF NOT EXISTS totp_enabled_at      TIMESTAMPTZ;
+ALTER TABLE users   ADD COLUMN IF NOT EXISTS totp_backup_codes    TEXT; -- hashed, newline-separated
+
+-- Short-lived pending TOTP setup — issued by /auth/2fa/setup, consumed
+-- by /auth/2fa/confirm. Not a full row if never confirmed.
+CREATE TABLE IF NOT EXISTS totp_setups (
+  user_id     TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  secret      TEXT NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  expires_at  TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '15 minutes')
+);
 CREATE UNIQUE INDEX IF NOT EXISTS idx_schools_billing_ref ON schools(billing_ref)
   WHERE billing_ref IS NOT NULL;
 

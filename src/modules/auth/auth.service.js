@@ -12,7 +12,7 @@ const logger = require('../../core/logger');
 
 const ROLES = ['admin', 'bursar', 'auditor'];
 
-async function login({ email, password, schoolSlug }, ip) {
+async function login({ email, password, schoolSlug, totp }, ip) {
   requireFields({ email, password }, ['email', 'password']);
   const emailLc = String(email).toLowerCase();
 
@@ -40,6 +40,25 @@ async function login({ email, password, schoolSlug }, ip) {
 
   const ok = await bcrypt.compare(password, user.password_hash);
   if (!ok) throw new AuthError('Invalid credentials');
+
+  // 2FA gate. If this user has TOTP enrolled, or if policy requires it for
+  // their role+tenant, the login must carry a valid `totp` code. Otherwise
+  // we respond with `requires2fa: true` and the client re-submits with the
+  // code. We never return a session token until 2FA clears.
+  const twofa = require('./twofa.service');
+  const mustHave2fa = !!user.totp_secret || twofa.isRequiredFor(user);
+  if (mustHave2fa && !user.totp_secret) {
+    // Policy requires 2FA but account hasn't enrolled — tell the client to
+    // go to /settings/2fa first. Short-circuit login.
+    return { requires2fa: 'enroll' };
+  }
+  if (user.totp_secret) {
+    if (!totp) return { requires2fa: 'verify' };
+    if (!(await twofa.verifyCode(user, totp))) {
+      writeAudit({ schoolId: school.id, userId: user.id, action: 'auth.2fa_failed', ip });
+      throw new AuthError('Invalid 2FA code');
+    }
+  }
 
   await db.query('UPDATE users SET last_login_at = NOW() WHERE id = $1', [user.id]);
   writeAudit({ schoolId: school.id, userId: user.id, action: 'auth.login', ip });
