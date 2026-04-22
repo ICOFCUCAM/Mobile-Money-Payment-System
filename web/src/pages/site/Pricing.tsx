@@ -375,7 +375,17 @@ const SubscriptionPanel: React.FC<{
   billing: Billing;
   onBilling: (b: Billing) => void;
   onStart: () => void;
-}> = ({ billing, onBilling, onStart }) => (
+}> = ({ billing, onBilling, onStart }) => {
+  // Student slider state — recommends a tier based on count.
+  // Thresholds match the new plan student caps: Basic 150, Pro 750, Enterprise 3000.
+  const [students, setStudents] = useState(500);
+  const recommendedId: 'basic' | 'pro' | 'enterprise' =
+    students <= 150  ? 'basic' :
+    students <= 750  ? 'pro'   :
+    'enterprise';
+  const overCap = students > 3000;
+
+  return (
   <motion.div
     initial={{ opacity: 0, y: 10 }}
     animate={{ opacity: 1, y: 0 }}
@@ -424,12 +434,57 @@ const SubscriptionPanel: React.FC<{
       </div>
     </div>
 
+    {/* Student-count slider — "Step 2: Pick a tier" — recommends a plan */}
+    <div className="mb-8 rounded-2xl bg-navy p-6 lg:p-7 text-white shadow-xl shadow-navy/25 border border-white/10">
+      <div className="flex items-start md:items-end justify-between gap-4 flex-col md:flex-row">
+        <div>
+          <div className="text-[11px] uppercase tracking-[0.2em] text-gold font-bold mb-2">
+            Size your plan with the student slider
+          </div>
+          <div className="font-display text-3xl font-bold">
+            {students >= 3000 ? '3,000+' : students.toLocaleString()}
+            <span className="text-slate-400 text-base font-normal ml-2">students</span>
+          </div>
+        </div>
+        <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gold text-navy text-xs font-bold uppercase tracking-widest">
+          <Sparkles className="w-3 h-3" />
+          {overCap ? 'See License plans' : `Recommended: ${recommendedId}`}
+        </div>
+      </div>
+
+      <Slider
+        value={[students]}
+        onValueChange={(v) => setStudents(v[0])}
+        min={10}
+        max={3000}
+        step={10}
+        className="mt-5"
+      />
+      <div className="mt-2 flex justify-between text-[10px] text-slate-400">
+        <span>10</span>
+        <span>150 <span className="text-gold/70">(Basic cap)</span></span>
+        <span>750 <span className="text-gold/70">(Pro cap)</span></span>
+        <span>3,000+</span>
+      </div>
+
+      <p className="mt-4 text-sm text-slate-300">
+        {recommendedId === 'basic'      && <>At this size, <b className="text-white">Basic</b> covers you for about <b className="text-gold">${Math.round(190 / Math.max(students, 10))}/student/year</b>.</>}
+        {recommendedId === 'pro'        && <>At this size, <b className="text-white">Pro</b> is the sweet spot — <b className="text-gold">${Math.round(490 / students * 100) / 100}/student/year</b> with webhooks, API and priority support.</>}
+        {recommendedId === 'enterprise' && !overCap && <>Over 750 students — <b className="text-white">Enterprise</b> unlocks unlimited providers, SLA, and audit exports for <b className="text-gold">${Math.round(1490 / students * 100) / 100}/student/year</b>.</>}
+        {overCap && <>Over 3,000 students? <b className="text-white">License plans</b> work out cheaper — break-even in 2–3 years plus you own the software.</>}
+      </p>
+    </div>
+
     {/* Plan cards */}
     <div className="grid md:grid-cols-3 gap-5">
       {PLANS.map((p, i) => {
         const price = billing === 'monthly' ? p.monthly : Math.round(p.yearly / 12);
         const yearly = p.yearly;
         const savings = p.monthly * 12 - p.yearly;
+        const isRecommended = p.id === recommendedId && !overCap;
+        // Merge "popular" styling (original Pro highlight) with dynamic
+        // slider-driven "recommended" so the card lights up contextually.
+        const highlight = p.popular || isRecommended;
         return (
           <motion.div
             key={p.id}
@@ -437,21 +492,21 @@ const SubscriptionPanel: React.FC<{
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: i * 0.06, duration: 0.3 }}
             className={`relative rounded-2xl p-6 lg:p-7 h-full transition-all duration-300 ${
-              p.popular
+              highlight
                 ? 'bg-gradient-to-br from-navy via-navy to-navy-950 text-white border-2 border-royal shadow-2xl shadow-royal/25 md:scale-[1.04]'
                 : 'bg-white text-navy border border-slate-200 hover:shadow-xl hover:-translate-y-1'
             }`}
           >
-            {p.popular && (
+            {highlight && (
               <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-royal text-white text-[10px] font-bold uppercase tracking-[0.2em] shadow-lg">
-                <Sparkles className="w-3 h-3" /> Most Popular
+                <Sparkles className="w-3 h-3" /> {isRecommended ? 'Recommended' : 'Most Popular'}
               </div>
             )}
 
             <div className="mb-1">
-              <h3 className={`font-display text-2xl font-bold ${p.popular ? 'text-white' : 'text-navy'}`}>{p.name}</h3>
+              <h3 className={`font-display text-2xl font-bold ${highlight ? 'text-white' : 'text-navy'}`}>{p.name}</h3>
             </div>
-            <p className={`text-[13px] mb-5 ${p.popular ? 'text-slate-300' : 'text-slate-600'}`}>{p.tag}</p>
+            <p className={`text-[13px] mb-5 ${highlight ? 'text-slate-300' : 'text-slate-600'}`}>{p.tag}</p>
 
             <div className="flex items-baseline gap-1">
               <AnimatePresence mode="wait">
@@ -466,23 +521,23 @@ const SubscriptionPanel: React.FC<{
                   ${price}
                 </motion.span>
               </AnimatePresence>
-              <span className={p.popular ? 'text-slate-400' : 'text-slate-500'}>/month</span>
+              <span className={highlight ? 'text-slate-400' : 'text-slate-500'}>/month</span>
             </div>
 
-            <div className={`mt-2 inline-flex items-center gap-2 text-[12px] ${p.popular ? 'text-slate-300' : 'text-slate-600'}`}>
-              <span className={p.popular ? 'text-royal-300 font-semibold' : 'text-royal font-semibold'}>${yearly}</span>
+            <div className={`mt-2 inline-flex items-center gap-2 text-[12px] ${highlight ? 'text-slate-300' : 'text-slate-600'}`}>
+              <span className={highlight ? 'text-royal-300 font-semibold' : 'text-royal font-semibold'}>${yearly}</span>
               <span>/year</span>
               <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-bold ${
-                p.popular ? 'bg-white/10 text-white' : 'bg-emerald-50 text-emerald-700'
+                highlight ? 'bg-white/10 text-white' : 'bg-emerald-50 text-emerald-700'
               }`}>Save ${savings}</span>
             </div>
 
-            <div className={`my-5 h-px ${p.popular ? 'bg-white/10' : 'bg-slate-100'}`} />
+            <div className={`my-5 h-px ${highlight ? 'bg-white/10' : 'bg-slate-100'}`} />
 
             <ul className="space-y-2.5">
               {p.features.map((f) => (
-                <li key={f} className={`flex items-start gap-2 text-[13.5px] ${p.popular ? 'text-slate-200' : 'text-slate-700'}`}>
-                  <CheckCircle2 className={`w-4 h-4 mt-0.5 shrink-0 ${p.popular ? 'text-royal-300' : 'text-royal'}`} />
+                <li key={f} className={`flex items-start gap-2 text-[13.5px] ${highlight ? 'text-slate-200' : 'text-slate-700'}`}>
+                  <CheckCircle2 className={`w-4 h-4 mt-0.5 shrink-0 ${highlight ? 'text-royal-300' : 'text-royal'}`} />
                   {f}
                 </li>
               ))}
@@ -490,7 +545,7 @@ const SubscriptionPanel: React.FC<{
 
             <Button
               className={`w-full mt-6 font-semibold ${
-                p.popular
+                highlight
                   ? 'bg-royal hover:bg-royal-700 text-white'
                   : 'bg-white hover:bg-royal hover:text-white border-2 border-royal text-royal'
               }`}
@@ -503,7 +558,8 @@ const SubscriptionPanel: React.FC<{
       })}
     </div>
   </motion.div>
-);
+  );
+};
 
 /* ═══ MODEL 3: LICENSE ═══════════════════════════════════════════════════ */
 type License = {
