@@ -7,7 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import {
   GraduationCap, CreditCard, ShieldCheck, Zap, CheckCircle2, ArrowRight,
   TrendingUp, Layers, Lock, Globe2, Building2, Settings2, Wallet, Quote,
-  History, Activity, UserPlus, Undo2, Webhook, KeyRound
+  History, Activity, UserPlus, Undo2, Webhook, KeyRound,
+  Coins, CalendarClock, Server, Sparkles
 } from 'lucide-react';
 import { SiteLayoutWithAuthCtx, useAuthDialog } from '@/components/site/SiteLayout';
 import { FadeIn, AnimatedNumber } from '@/components/site/motion';
@@ -507,6 +508,191 @@ const HomeInner: React.FC = () => {
             <Button asChild className="bg-gold hover:bg-gold-600 text-navy font-semibold">
               <Link to="/providers">See all provider coverage <ArrowRight className="w-4 h-4 ml-1.5" /></Link>
             </Button>
+          </FadeIn>
+        </div>
+      </section>
+
+      {/* Payment Models — Prepaid / Postpaid / License */}
+      <section className="relative bg-white py-28">
+        {/* Subtle dot pattern for premium texture */}
+        <div
+          className="absolute inset-0 opacity-[0.4] pointer-events-none"
+          style={{
+            backgroundImage:
+              'radial-gradient(circle at 1px 1px, rgb(11 28 61 / 0.06) 1px, transparent 0)',
+            backgroundSize: '22px 22px'
+          }}
+        />
+
+        <div className="relative max-w-7xl mx-auto px-6 lg:px-8">
+          <FadeIn className="text-center mb-16 max-w-3xl mx-auto">
+            <div className="text-[11px] uppercase tracking-[0.25em] text-royal font-semibold mb-3">
+              Payment models
+            </div>
+            <h2 className="font-display text-3xl md:text-5xl font-bold text-navy tracking-tight">
+              Three ways to pay for <span className="text-royal">SchoolPay</span>
+            </h2>
+            <p className="mt-4 text-slate-600 text-lg">
+              Whether you're a 40-student village school, a 12,000-student academy, or a network of schools — there's
+              a model that fits your scale and cash-flow.
+            </p>
+          </FadeIn>
+
+          <div className="grid lg:grid-cols-3 gap-6">
+            {/* Prepaid — small schools */}
+            <FadeIn>
+              <div className="group relative bg-white rounded-2xl border border-slate-200 p-8 h-full hover:shadow-2xl hover:shadow-navy/10 hover:-translate-y-1 transition-all duration-300">
+                {/* Top gradient accent */}
+                <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-royal to-royal-400 rounded-t-2xl" />
+
+                <div className="w-14 h-14 rounded-xl bg-royal/10 text-royal flex items-center justify-center mb-5 group-hover:bg-royal group-hover:text-white transition-colors">
+                  <Coins className="w-6 h-6" />
+                </div>
+
+                <div className="text-[11px] uppercase tracking-[0.2em] text-royal font-bold mb-2">
+                  Prepaid
+                </div>
+                <h3 className="font-display text-2xl font-bold text-navy mb-3">
+                  Pay per student
+                </h3>
+                <p className="text-sm text-slate-600 leading-relaxed mb-6">
+                  Top up a credit bundle and spend it as parents make payments. No monthly
+                  commitment — perfect for small schools or seasonal intakes.
+                </p>
+
+                <ul className="space-y-2.5 mb-8 text-sm text-slate-700">
+                  {[
+                    'Pay only for students you onboard',
+                    'No minimum commitment',
+                    'Top up from $20',
+                    'Credits never expire'
+                  ].map((f) => (
+                    <li key={f} className="flex items-start gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-royal mt-0.5 shrink-0" /> {f}
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="pt-5 border-t border-slate-100 flex items-end justify-between">
+                  <div>
+                    <div className="text-3xl font-display font-bold text-navy">$0.50<span className="text-base font-normal text-slate-500">/student</span></div>
+                    <div className="text-xs text-slate-500 mt-1">Ideal for &lt; 200 students</div>
+                  </div>
+                </div>
+
+                <Button
+                  className="w-full mt-6 bg-white border-2 border-navy text-navy hover:bg-navy hover:text-white"
+                  onClick={() => setMode('register')}
+                >
+                  Start with Prepaid
+                </Button>
+              </div>
+            </FadeIn>
+
+            {/* Postpaid — RECOMMENDED, large schools */}
+            <FadeIn delay={0.1}>
+              <div className="group relative bg-navy text-white rounded-2xl border-2 border-gold p-8 h-full shadow-2xl shadow-navy/30 hover:-translate-y-1 transition-all duration-300 lg:scale-[1.04]">
+                {/* Gold "recommended" badge */}
+                <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-gold text-navy text-[11px] font-bold uppercase tracking-widest shadow-lg">
+                  <Sparkles className="w-3 h-3" /> Most popular
+                </div>
+
+                <div className="w-14 h-14 rounded-xl bg-gold text-navy flex items-center justify-center mb-5 shadow-md">
+                  <CalendarClock className="w-6 h-6" />
+                </div>
+
+                <div className="text-[11px] uppercase tracking-[0.2em] text-gold font-bold mb-2">
+                  Postpaid
+                </div>
+                <h3 className="font-display text-2xl font-bold mb-3">
+                  Monthly subscription
+                </h3>
+                <p className="text-sm text-slate-300 leading-relaxed mb-6">
+                  Flat monthly or yearly fee, unlimited transactions, unlimited students. The predictable
+                  choice for schools managing thousands of payments a month.
+                </p>
+
+                <ul className="space-y-2.5 mb-8 text-sm text-slate-200">
+                  {[
+                    'Unlimited transactions & students',
+                    'Multi-provider support',
+                    'Priority support & SLA',
+                    'Monthly or yearly (save 2 months)'
+                  ].map((f) => (
+                    <li key={f} className="flex items-start gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-gold mt-0.5 shrink-0" /> {f}
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="pt-5 border-t border-white/15 flex items-end justify-between">
+                  <div>
+                    <div className="text-3xl font-display font-bold">From $25<span className="text-base font-normal text-slate-400">/month</span></div>
+                    <div className="text-xs text-slate-400 mt-1">Ideal for 200 – 5,000 students</div>
+                  </div>
+                </div>
+
+                <Button
+                  className="w-full mt-6 bg-gold hover:bg-gold-600 text-navy font-semibold"
+                  onClick={() => setMode('register')}
+                >
+                  Start with Postpaid
+                </Button>
+              </div>
+            </FadeIn>
+
+            {/* License — one-time, self-hosted, networks */}
+            <FadeIn delay={0.2}>
+              <div className="group relative bg-white rounded-2xl border border-slate-200 p-8 h-full hover:shadow-2xl hover:shadow-navy/10 hover:-translate-y-1 transition-all duration-300">
+                <div className="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-gold to-gold-600 rounded-t-2xl" />
+
+                <div className="w-14 h-14 rounded-xl bg-gold/15 text-gold-600 flex items-center justify-center mb-5 group-hover:bg-gold group-hover:text-navy transition-colors">
+                  <Server className="w-6 h-6" />
+                </div>
+
+                <div className="text-[11px] uppercase tracking-[0.2em] text-gold-600 font-bold mb-2">
+                  License
+                </div>
+                <h3 className="font-display text-2xl font-bold text-navy mb-3">
+                  One-time purchase
+                </h3>
+                <p className="text-sm text-slate-600 leading-relaxed mb-6">
+                  Buy the SchoolPay system outright and run it on your own servers. Manage one school,
+                  a district, or an entire network — tier depends on the license you pick.
+                </p>
+
+                <ul className="space-y-2.5 mb-8 text-sm text-slate-700">
+                  {[
+                    'Self-hosted, your infrastructure',
+                    'Manage multiple schools per license',
+                    'White-label branding included',
+                    'Source-available; one year of updates'
+                  ].map((f) => (
+                    <li key={f} className="flex items-start gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-gold-600 mt-0.5 shrink-0" /> {f}
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="pt-5 border-t border-slate-100 flex items-end justify-between">
+                  <div>
+                    <div className="text-3xl font-display font-bold text-navy">From $2,500<span className="text-base font-normal text-slate-500"> one-time</span></div>
+                    <div className="text-xs text-slate-500 mt-1">Networks & ministries</div>
+                  </div>
+                </div>
+
+                <Button
+                  asChild
+                  className="w-full mt-6 bg-white border-2 border-navy text-navy hover:bg-navy hover:text-white"
+                >
+                  <Link to="/pricing#license">Talk to sales</Link>
+                </Button>
+              </div>
+            </FadeIn>
+          </div>
+
+          <FadeIn className="text-center mt-10 text-sm text-slate-500">
+            Not sure which model fits? <Link to="/pricing" className="text-royal font-semibold hover:underline">Compare plans side-by-side →</Link>
           </FadeIn>
         </div>
       </section>
