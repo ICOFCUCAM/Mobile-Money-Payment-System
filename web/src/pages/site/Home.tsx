@@ -435,6 +435,82 @@ const HomeInner: React.FC = () => {
         </div>
       </section>
 
+      {/* Providers — MTN / Orange / Airtel */}
+      <section className="relative bg-navy text-white py-24 overflow-hidden">
+        <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-gold/50 to-transparent" />
+        <div className="absolute -top-40 -left-40 w-[520px] h-[520px] rounded-full bg-royal/15 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-40 -right-40 w-[520px] h-[520px] rounded-full bg-gold/10 blur-3xl pointer-events-none" />
+
+        <div className="relative max-w-7xl mx-auto px-6 lg:px-8">
+          <FadeIn className="text-center mb-16 max-w-3xl mx-auto">
+            <div className="text-[11px] uppercase tracking-[0.25em] text-gold font-semibold mb-3">
+              Integration partners
+            </div>
+            <h2 className="font-display text-3xl md:text-5xl font-bold tracking-tight">
+              Connect to Africa's <span className="text-gold">leading</span> mobile money networks
+            </h2>
+            <p className="mt-4 text-slate-300 text-lg">
+              One unified API. HMAC-verified webhooks, replay protection, and live reconciliation — out of the box.
+            </p>
+          </FadeIn>
+
+          <div className="grid md:grid-cols-3 gap-6">
+            {[
+              {
+                name: 'MTN Mobile Money',
+                users: '280M users',
+                blurb: 'MoMo subscribers across 17 countries — Cameroon, Ghana, Uganda, Rwanda, Côte d\'Ivoire and more.',
+                initials: 'MTN',
+                ring: 'ring-yellow-400/40',
+                badgeBg: 'bg-gradient-to-br from-yellow-300 to-yellow-500',
+                badgeText: 'text-yellow-950'
+              },
+              {
+                name: 'Orange Money',
+                users: '70M users',
+                blurb: 'Seamless integration across West & Central Africa — Senegal, Mali, Côte d\'Ivoire, Cameroon and beyond.',
+                initials: 'OM',
+                ring: 'ring-orange-400/40',
+                badgeBg: 'bg-gradient-to-br from-orange-400 to-orange-600',
+                badgeText: 'text-white'
+              },
+              {
+                name: 'Airtel Money',
+                users: '27M users',
+                blurb: 'Coverage for East & Southern Africa — Kenya, Uganda, Tanzania, Rwanda, Zambia, Malawi.',
+                initials: 'AM',
+                ring: 'ring-red-400/40',
+                badgeBg: 'bg-gradient-to-br from-red-400 to-red-600',
+                badgeText: 'text-white'
+              }
+            ].map((p, i) => (
+              <FadeIn key={p.name} delay={i * 0.08}>
+                <div className={`relative bg-white/[0.04] backdrop-blur-sm rounded-2xl p-7 h-full border border-white/10 hover:border-gold/40 hover:bg-white/[0.06] transition-all duration-300 hover:-translate-y-1 ring-1 ${p.ring}`}>
+                  <div className="flex items-start justify-between mb-5">
+                    <div className={`w-14 h-14 rounded-xl ${p.badgeBg} ${p.badgeText} flex items-center justify-center font-display font-bold text-sm shadow-lg tracking-tight`}>
+                      {p.initials}
+                    </div>
+                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 text-[10px] font-semibold uppercase tracking-widest">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      Live
+                    </div>
+                  </div>
+                  <h3 className="font-display text-xl font-bold text-white">{p.name}</h3>
+                  <div className="text-sm text-gold mt-0.5 font-semibold">{p.users}</div>
+                  <p className="text-sm text-slate-300 mt-4 leading-relaxed">{p.blurb}</p>
+                </div>
+              </FadeIn>
+            ))}
+          </div>
+
+          <FadeIn className="text-center mt-12">
+            <Button asChild className="bg-gold hover:bg-gold-600 text-navy font-semibold">
+              <Link to="/providers">See all provider coverage <ArrowRight className="w-4 h-4 ml-1.5" /></Link>
+            </Button>
+          </FadeIn>
+        </div>
+      </section>
+
       {/* Testimonials */}
       <section className="bg-slate-50 py-20 border-y border-slate-100">
         <div className="max-w-7xl mx-auto px-6">
