@@ -31,24 +31,17 @@ const HomeInner: React.FC = () => {
 
   return (
     <>
-      {/* Hero — navy with the Africa map as a FULL-WIDTH background (replaces
-           the previous photograph). Headline, widget and ticker sit on top. */}
+      {/* Hero — headline on the left, Africa map on the right. The rotating
+           dashboard widget has moved to its own "See it live" section below,
+           so the hero stays focused on headline + geography. */}
       <section className="relative bg-navy text-white overflow-hidden pb-0">
-        {/* Soft ambient glows + top gold hairline */}
         <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-gold/50 to-transparent" />
         <div className="absolute -top-40 -left-20 w-[620px] h-[620px] rounded-full bg-royal/15 blur-3xl pointer-events-none" />
         <div className="absolute -bottom-40 -right-20 w-[620px] h-[620px] rounded-full bg-gold/8 blur-3xl pointer-events-none" />
 
-        {/* Africa map — smaller now, anchored to the left side of the hero
-            (like the US map in the fintech reference). Headline sits above
-            it; dashboard widget sits on the right. */}
-        <div className="absolute left-0 top-10 bottom-8 w-[52%] md:w-[46%] lg:w-[42%] pointer-events-none opacity-95 hidden md:block">
-          <AfricaMap className="w-full h-full" />
-        </div>
-
-        <div className="relative max-w-7xl mx-auto px-6 lg:px-8 pt-20 lg:pt-24">
-          {/* Row 1 — headline block, left-aligned */}
-          <div className="max-w-2xl">
+        <div className="relative max-w-7xl mx-auto px-6 lg:px-8 pt-20 lg:pt-24 pb-12 grid lg:grid-cols-[1.05fr_1fr] gap-10 lg:gap-6 items-center">
+          {/* Left column — headline */}
+          <div className="max-w-xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gold/15 border border-gold/40 text-gold text-[11px] font-semibold uppercase tracking-widest mb-6">
               <span className="w-1.5 h-1.5 rounded-full bg-gold animate-pulse" /> Live across 12 countries
             </div>
@@ -57,7 +50,7 @@ const HomeInner: React.FC = () => {
               Built for <span className="text-royal-400">Africa</span>.<br />
               <span className="text-gold">Powered by Mobile Money.</span>
             </h1>
-            <p className="mt-6 text-lg text-slate-300 leading-relaxed max-w-2xl">
+            <p className="mt-6 text-lg text-slate-300 leading-relaxed">
               SchoolPay is the payment infrastructure for African schools — one API that integrates
               MTN MoMo, Orange Money and Airtel Money, verifies every receipt, credits the student,
               and hands your bursar a real-time audit trail.
@@ -86,22 +79,54 @@ const HomeInner: React.FC = () => {
             </div>
           </div>
 
-          {/* Row 2 — dashboard widget on the right; map is the full-width
-              background so the left column is just a spacer that lets the
-              map breathe behind the headline. */}
-          <div className="mt-14 grid lg:grid-cols-[1fr_1fr] gap-10 items-center">
-            {/* Spacer / "3 networks · 12 countries" pill floating over the map */}
-            <div className="hidden lg:block relative h-[420px]">
-              <div className="absolute bottom-4 left-0 flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm text-[11px]">
+          {/* Right column — Africa map, naturally sized inside the grid cell */}
+          <div className="relative hidden md:block">
+            <AfricaMap className="w-full h-auto" />
+            {/* Floating metric pill under the map */}
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm text-[11px]">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span className="text-white/90 font-semibold">3 networks</span>
+              <span className="text-white/40">·</span>
+              <span className="text-gold font-semibold">12 countries</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Row 3 — live transactions ticker spanning full-width of the hero */}
+        <div className="relative border-t border-white/10 bg-navy-950/50">
+          <div className="max-w-7xl mx-auto px-6 lg:px-8 py-2">
+            <div className="flex items-center gap-4 py-1">
+              <div className="shrink-0 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 text-[10px] font-bold uppercase tracking-widest">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-white/90 font-semibold">3 networks</span>
-                <span className="text-white/40">·</span>
-                <span className="text-gold font-semibold">12 countries</span>
+                Live
+              </div>
+              <div className="flex-1 min-w-0">
+                <LiveTicker />
               </div>
             </div>
+          </div>
+        </div>
+      </section>
 
-          {/* Rotating dashboard widget — white card, sits on the right over the map. */}
-          <Card className="p-0 shadow-2xl border-slate-100 overflow-hidden relative bg-white text-slate-900 max-w-[440px] ml-auto">
+      {/* "See it live" — dashboard widget spotlight, right below the hero */}
+      <section className="relative bg-gradient-to-b from-navy to-navy-950 text-white py-20 border-t border-white/5">
+        <div className="absolute -top-40 left-1/2 -translate-x-1/2 w-[720px] h-[520px] rounded-full bg-royal/10 blur-3xl pointer-events-none" />
+        <div className="relative max-w-6xl mx-auto px-6 lg:px-8">
+          <FadeIn className="text-center mb-10 max-w-2xl mx-auto">
+            <div className="text-[11px] uppercase tracking-[0.25em] text-gold font-semibold mb-3">
+              The product, live
+            </div>
+            <h2 className="font-display text-3xl md:text-4xl font-bold tracking-tight">
+              Your dashboard, the moment <span className="text-gold">a parent pays</span>
+            </h2>
+            <p className="mt-4 text-slate-300">
+              Flip between Overview, Verify Payment and Audit Log — the same three surfaces your bursar will use every day.
+            </p>
+          </FadeIn>
+
+          <FadeIn delay={0.1}>
+          {/* Rotating dashboard widget — white card, now sits on its own dark band. */}
+          <Card className="p-0 shadow-2xl border-slate-100 overflow-hidden relative bg-white text-slate-900 max-w-[560px] mx-auto">
             <div className="absolute -top-3 -right-3 w-24 h-24 rounded-full bg-blue-500/10 blur-2xl pointer-events-none" />
             <div className="flex border-b border-slate-100 bg-slate-50/50">
               {([
@@ -264,22 +289,7 @@ const HomeInner: React.FC = () => {
               </AnimatePresence>
             </div>
           </Card>
-          </div>
-        </div>
-
-        {/* Row 3 — live transactions ticker spanning full-width of the hero */}
-        <div className="relative mt-16 border-t border-white/10 bg-navy-950/50">
-          <div className="max-w-7xl mx-auto px-6 lg:px-8 py-2">
-            <div className="flex items-center gap-4 py-1">
-              <div className="shrink-0 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 text-[10px] font-bold uppercase tracking-widest">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                Live
-              </div>
-              <div className="flex-1 min-w-0">
-                <LiveTicker />
-              </div>
-            </div>
-          </div>
+          </FadeIn>
         </div>
       </section>
 
