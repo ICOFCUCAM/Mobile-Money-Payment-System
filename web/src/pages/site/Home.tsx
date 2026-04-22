@@ -39,13 +39,12 @@ const HomeInner: React.FC = () => {
         <div className="absolute -top-40 -left-20 w-[620px] h-[620px] rounded-full bg-royal/15 blur-3xl pointer-events-none" />
         <div className="absolute -bottom-40 -right-20 w-[620px] h-[620px] rounded-full bg-gold/8 blur-3xl pointer-events-none" />
 
-        {/* FULL-WIDTH Africa map background — spans the entire hero edge-to-edge,
-            shifted slightly right so the headline on the left reads clearly. */}
-        <div className="absolute inset-0 pointer-events-none opacity-90">
-          <AfricaMap className="w-full h-full -translate-x-[6%] md:translate-x-[8%] scale-[1.05] md:scale-110 origin-center" />
+        {/* Africa map — smaller now, anchored to the left side of the hero
+            (like the US map in the fintech reference). Headline sits above
+            it; dashboard widget sits on the right. */}
+        <div className="absolute left-0 top-10 bottom-8 w-[52%] md:w-[46%] lg:w-[42%] pointer-events-none opacity-95 hidden md:block">
+          <AfricaMap className="w-full h-full" />
         </div>
-        {/* Left navy vignette so the headline stays legible on top of the map */}
-        <div className="absolute inset-0 bg-gradient-to-r from-navy via-navy/80 to-transparent pointer-events-none" />
 
         <div className="relative max-w-7xl mx-auto px-6 lg:px-8 pt-20 lg:pt-24">
           {/* Row 1 — headline block, left-aligned */}
@@ -102,7 +101,7 @@ const HomeInner: React.FC = () => {
             </div>
 
           {/* Rotating dashboard widget — white card, sits on the right over the map. */}
-          <Card className="p-0 shadow-2xl border-slate-100 overflow-hidden relative">
+          <Card className="p-0 shadow-2xl border-slate-100 overflow-hidden relative bg-white text-slate-900 max-w-[440px] ml-auto">
             <div className="absolute -top-3 -right-3 w-24 h-24 rounded-full bg-blue-500/10 blur-2xl pointer-events-none" />
             <div className="flex border-b border-slate-100 bg-slate-50/50">
               {([
@@ -132,7 +131,7 @@ const HomeInner: React.FC = () => {
                 );
               })}
             </div>
-            <div className="p-6 min-h-[380px]">
+            <div className="p-5 min-h-[320px]">
               <AnimatePresence mode="wait">
                 {heroTab === 'overview' && (
                   <motion.div key="overview" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.25 }}>
