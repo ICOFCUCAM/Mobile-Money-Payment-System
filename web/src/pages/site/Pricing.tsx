@@ -139,22 +139,23 @@ const PrepaidPanel: React.FC<{ onStart: () => void }> = ({ onStart }) => (
           Pay per student
         </h3>
         <p className="mt-3 text-slate-600 leading-relaxed max-w-md">
-          Perfect for schools that want to pay as they collect. No monthly commitment —
-          just top up a credit bundle and spend it as parents make payments.
+          Perfect for schools under ~100 students or seasonal intakes. Your wallet is debited
+          $6 per active student at the start of each academic year — top up ahead, never
+          mid-term surprises.
         </p>
 
         <div className="mt-8 flex items-baseline gap-2">
-          <span className="font-display text-5xl font-bold text-navy">$2.00</span>
-          <span className="text-slate-500 text-sm">/ student</span>
+          <span className="font-display text-5xl font-bold text-navy">$6.00</span>
+          <span className="text-slate-500 text-sm">/ student / year</span>
           <Info className="w-3.5 h-3.5 text-slate-400" />
         </div>
 
         <ul className="mt-7 space-y-3 max-w-md">
           {[
-            'Pay only for students you onboard',
-            'No minimum commitment',
-            'Credits never expire',
-            'Top up anytime'
+            'Pay per active student, once a year',
+            'No monthly commitment',
+            'Wallet balance never expires',
+            'Prorated top-ups for mid-year enrolments'
           ].map((f) => (
             <li key={f} className="flex items-start gap-2.5 text-[14px] text-slate-700">
               <span className="shrink-0 mt-0.5 w-5 h-5 rounded-full bg-emerald-50 border border-emerald-200 flex items-center justify-center">
@@ -215,8 +216,8 @@ const PrepaidIllustration: React.FC = () => {
       >
         <div className="flex items-start justify-between gap-4">
           <div>
-            <div className="text-[11px] text-slate-500 font-medium">Student Payment</div>
-            <div className="mt-1 font-display text-2xl font-bold text-navy">$2.00</div>
+            <div className="text-[11px] text-slate-500 font-medium">Annual wallet debit</div>
+            <div className="mt-1 font-display text-2xl font-bold text-navy">$6.00</div>
             <div className="mt-1.5 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-700 text-[10px] font-bold">
               <CheckCircle2 className="w-2.5 h-2.5" /> Paid
             </div>
@@ -243,10 +244,11 @@ type Plan = {
 
 const PLANS: Plan[] = [
   {
-    id: 'basic', name: 'Basic', tag: 'Everything you need to get started.',
-    monthly: 10, yearly: 96,
+    id: 'basic', name: 'Basic', tag: 'Everything a starter school needs.',
+    // Yearly is ~17% off (2 months free): $19 × 12 = $228 → $190/yr (save $38)
+    monthly: 19, yearly: 190,
     features: [
-      'Up to 100 students',
+      'Up to 150 students',
       '1 Payment Provider',
       'Basic Dashboard',
       'Email Support',
@@ -255,9 +257,10 @@ const PLANS: Plan[] = [
   },
   {
     id: 'pro', name: 'Pro', tag: 'Advanced features for growing schools.',
-    monthly: 25, yearly: 240, popular: true,
+    // $49 × 12 = $588 → $490/yr (save $98)
+    monthly: 49, yearly: 490, popular: true,
     features: [
-      'Up to 1,000 students',
+      'Up to 750 students',
       '3 Payment Providers',
       'Advanced Analytics',
       'Priority Support',
@@ -268,9 +271,10 @@ const PLANS: Plan[] = [
   },
   {
     id: 'enterprise', name: 'Enterprise', tag: 'For large schools and networks.',
-    monthly: 99, yearly: 948,
+    // $149 × 12 = $1,788 → $1,490/yr (save $298)
+    monthly: 149, yearly: 1490,
     features: [
-      'Unlimited Students',
+      'Up to 3,000 students',
       'Unlimited Providers',
       'White-Label Branding',
       'Dedicated Support',
@@ -321,7 +325,7 @@ const SubscriptionPanel: React.FC<{
             billing === 'yearly' ? 'text-white' : 'text-slate-500'
           }`}
         >
-          Yearly <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${billing === 'yearly' ? 'bg-white/20' : 'bg-emerald-100 text-emerald-700'} font-bold`}>Save 20%</span>
+          Yearly <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${billing === 'yearly' ? 'bg-white/20' : 'bg-emerald-100 text-emerald-700'} font-bold`}>2 months free</span>
         </button>
         {/* Animated pill */}
         <motion.span
@@ -427,11 +431,14 @@ type License = {
   highlight?: boolean;
 };
 
+// License tiers are FLAT one-off purchases — no annual maintenance fee.
+// What's included: perpetual use, all core features, 1 year of free updates,
+// 1 year of email/priority support. No recurring billing.
 const LICENSES: License[] = [
-  { id: '1',     name: '1 School',      price: 2500,  features: ['Self-hosted', 'All 1 core features', '1 year of updates', 'Email support'], cta: 'Get License' },
-  { id: '2',     name: '2 Schools',     price: 4000,  features: ['All 1 School features', 'Manage 2 schools', '1 year of updates', 'Email support'], cta: 'Get License' },
-  { id: '3-5',   name: '3 – 5 Schools', price: 8000,  features: ['All 1 School features', 'Manage 3–5 schools', '1 year of updates', 'Email support'], cta: 'Get License' },
-  { id: '5-10',  name: '5 – 10 Schools',price: 12000, features: ['All 1 School features', 'Manage 5–10 schools', '1 year of updates', 'Priority support'], cta: 'Get License' },
+  { id: '1',     name: '1 School',      price: 6000,  features: ['Self-hosted deployment', 'All core features', '1 year of free updates', 'Email support (1 yr)'], cta: 'Get License' },
+  { id: '2',     name: '2 Schools',     price: 9000,  features: ['All 1-School features', 'Manage 2 schools', '1 year of free updates', 'Email support (1 yr)'], cta: 'Get License' },
+  { id: '3-5',   name: '3 – 5 Schools', price: 16000, features: ['All 1-School features', 'Manage 3–5 schools', '1 year of free updates', 'Email support (1 yr)'], cta: 'Get License' },
+  { id: '5-10',  name: '5 – 10 Schools',price: 25000, features: ['All 1-School features', 'Manage 5–10 schools', '1 year of free updates', 'Priority support (1 yr)'], cta: 'Get License' },
   { id: '10p',   name: '10+ Schools',   priceText: 'Contact', extra: 'our team for custom pricing', features: ['Custom deployments', 'Volume discounts', 'Dedicated support', 'SLA & Onboarding'], cta: 'Contact Sales', highlight: true }
 ];
 
@@ -450,7 +457,9 @@ const LicensePanel: React.FC<{ onStart: () => void }> = ({ onStart }) => (
         </div>
         License plans (one-time)
       </div>
-      <p className="text-slate-600 text-sm">Run SchoolPay on your own infrastructure.</p>
+      <p className="text-slate-600 text-sm">
+        Run SchoolPay on your own infrastructure. <span className="font-semibold text-navy">Flat one-off fee — no annual maintenance, no recurring charges.</span>
+      </p>
     </div>
 
     <div className="grid md:grid-cols-3 lg:grid-cols-5 gap-4">

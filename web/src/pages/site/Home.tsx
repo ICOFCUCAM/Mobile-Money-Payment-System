@@ -765,16 +765,16 @@ const HomeInner: React.FC = () => {
                   Pay per student
                 </h3>
                 <p className="text-sm text-slate-600 leading-relaxed mb-6">
-                  Top up a credit bundle and spend it as parents make payments. No monthly
-                  commitment — perfect for small schools or seasonal intakes.
+                  Your wallet is debited $6 per active student at the start of each academic year.
+                  No monthly commitment — ideal for small schools and seasonal intakes.
                 </p>
 
                 <ul className="space-y-2.5 mb-8 text-sm text-slate-700">
                   {[
-                    'Pay only for students you onboard',
-                    'No minimum commitment',
-                    'Top up from $20',
-                    'Credits never expire'
+                    'Pay per active student, once a year',
+                    'No monthly commitment',
+                    'Wallet balance never expires',
+                    'Prorated top-ups mid-year'
                   ].map((f) => (
                     <li key={f} className="flex items-start gap-2">
                       <CheckCircle2 className="w-4 h-4 text-royal mt-0.5 shrink-0" /> {f}
@@ -784,8 +784,8 @@ const HomeInner: React.FC = () => {
 
                 <div className="pt-5 border-t border-slate-100 flex items-end justify-between">
                   <div>
-                    <div className="text-3xl font-display font-bold text-navy">$0.50<span className="text-base font-normal text-slate-500">/student</span></div>
-                    <div className="text-xs text-slate-500 mt-1">Ideal for &lt; 200 students</div>
+                    <div className="text-3xl font-display font-bold text-navy">$6<span className="text-base font-normal text-slate-500">/student/yr</span></div>
+                    <div className="text-xs text-slate-500 mt-1">Best under ~100 students</div>
                   </div>
                 </div>
 
@@ -836,8 +836,8 @@ const HomeInner: React.FC = () => {
 
                 <div className="pt-5 border-t border-white/15 flex items-end justify-between">
                   <div>
-                    <div className="text-3xl font-display font-bold">From $25<span className="text-base font-normal text-slate-400">/month</span></div>
-                    <div className="text-xs text-slate-400 mt-1">Ideal for 200 – 5,000 students</div>
+                    <div className="text-3xl font-display font-bold">From $19<span className="text-base font-normal text-slate-400">/month</span></div>
+                    <div className="text-xs text-slate-400 mt-1">Up to 3,000 students</div>
                   </div>
                 </div>
 
@@ -875,7 +875,8 @@ const HomeInner: React.FC = () => {
                     'Self-hosted, your infrastructure',
                     'Manage multiple schools per license',
                     'White-label branding included',
-                    'Source-available; one year of updates'
+                    'Flat one-off — no annual maintenance',
+                    '1 year of updates + email support'
                   ].map((f) => (
                     <li key={f} className="flex items-start gap-2">
                       <CheckCircle2 className="w-4 h-4 text-gold-600 mt-0.5 shrink-0" /> {f}
@@ -885,8 +886,8 @@ const HomeInner: React.FC = () => {
 
                 <div className="pt-5 border-t border-slate-100 flex items-end justify-between">
                   <div>
-                    <div className="text-3xl font-display font-bold text-navy">From $2,500<span className="text-base font-normal text-slate-500"> one-time</span></div>
-                    <div className="text-xs text-slate-500 mt-1">Networks & ministries</div>
+                    <div className="text-3xl font-display font-bold text-navy">From $6,000<span className="text-base font-normal text-slate-500"> one-time</span></div>
+                    <div className="text-xs text-slate-500 mt-1">Flat fee · no recurring charges</div>
                   </div>
                 </div>
 
@@ -1039,9 +1040,9 @@ const HomeInner: React.FC = () => {
 
           <div className="grid md:grid-cols-3 gap-5 max-w-5xl mx-auto">
             {[
-              { name: 'Basic',      price: 10,  tag: 'Up to 100 students',    highlight: false },
-              { name: 'Pro',        price: 25,  tag: 'Up to 1,000 students',  highlight: true  },
-              { name: 'Enterprise', price: 99,  tag: 'Unlimited',             highlight: false }
+              { name: 'Basic',      price: 19,  tag: 'Up to 150 students',    highlight: false },
+              { name: 'Pro',        price: 49,  tag: 'Up to 750 students',    highlight: true  },
+              { name: 'Enterprise', price: 149, tag: 'Up to 3,000 students',  highlight: false }
             ].map((p) => (
               <div
                 key={p.name}
