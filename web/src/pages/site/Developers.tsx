@@ -140,28 +140,33 @@ const DevelopersInner: React.FC = () => {
   const { setMode } = useAuthDialog();
   return (
     <>
-      <section className="relative bg-gradient-to-b from-blue-50/60 to-white py-16">
-        <div className="max-w-7xl mx-auto px-6 grid lg:grid-cols-[1.3fr_1fr] gap-10 items-center">
+      <section className="relative bg-navy text-white py-24 overflow-hidden">
+        <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-gold/60 to-transparent" />
+        <div className="absolute -top-40 -right-20 w-[520px] h-[520px] rounded-full bg-royal/20 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-40 -left-20 w-[520px] h-[520px] rounded-full bg-gold/10 blur-3xl pointer-events-none" />
+        <div className="relative max-w-7xl mx-auto px-6 lg:px-8 grid lg:grid-cols-[1.3fr_1fr] gap-10 items-center">
           <div>
-            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 mb-4">Developers</Badge>
-            <h1 className="font-display text-4xl md:text-5xl font-bold tracking-tight">
-              Integrate SchoolPay into your school website.
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gold/15 border border-gold/40 text-gold text-[11px] font-semibold uppercase tracking-widest mb-6">
+              <Terminal className="w-3 h-3" /> Developer docs
+            </div>
+            <h1 className="font-display text-4xl md:text-6xl font-bold tracking-tight leading-[1.05]">
+              Integrate SchoolPay <span className="text-gold">in minutes</span>
             </h1>
-            <p className="mt-4 text-slate-600 text-lg leading-relaxed">
+            <p className="mt-5 text-slate-300 text-lg leading-relaxed max-w-xl">
               Three ways to accept mobile-money payments from your own website: a REST API, a drop-in widget, or a hosted payment page.
-              All three credit the student automatically and log every request for your audit trail.
+              All three verify with the provider, credit the student, and log every request.
             </p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <Button size="lg" className="bg-blue-600 hover:bg-blue-700" onClick={() => setMode('register')}>
-                Get an API key <ArrowRight className="w-4 h-4 ml-1" />
+            <div className="mt-7 flex flex-wrap gap-3">
+              <Button size="lg" className="bg-gold hover:bg-gold-600 text-navy font-semibold" onClick={() => setMode('register')}>
+                Get an API key <ArrowRight className="w-4 h-4 ml-1.5" />
               </Button>
-              <Button asChild size="lg" variant="outline">
+              <Button asChild size="lg" variant="outline" className="border-white/30 text-white bg-white/5 hover:bg-white/15 hover:text-white">
                 <a href="#getting-started">Read the quickstart</a>
               </Button>
             </div>
           </div>
-          <Card className="p-5 shadow-xl border-slate-100">
-            <div className="text-xs text-slate-500 mb-2 flex items-center gap-1.5"><Terminal className="w-3.5 h-3.5" /> Quickstart</div>
+          <Card className="p-5 shadow-2xl border-0 bg-white/10 backdrop-blur-sm ring-1 ring-white/15">
+            <div className="text-xs text-gold mb-2 flex items-center gap-1.5 font-semibold uppercase tracking-widest"><Terminal className="w-3.5 h-3.5" /> Quickstart</div>
             <CodeBlock code={restExample} />
           </Card>
         </div>

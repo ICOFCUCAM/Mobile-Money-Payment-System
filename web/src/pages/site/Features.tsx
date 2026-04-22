@@ -1,116 +1,185 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
-  Layers, CreditCard, ShieldCheck, Zap, Webhook, BarChart3, KeyRound, Globe2,
-  Lock, ArrowRight, CheckCircle2
+  Zap, CreditCard, BarChart3, Webhook, ShieldCheck, Layers, Lock, KeyRound,
+  ArrowRight, CheckCircle2, Sparkles, Activity, Users, RotateCcw, FileText,
+  Globe2, Building2
 } from 'lucide-react';
 import { SiteLayoutWithAuthCtx, useAuthDialog } from '@/components/site/SiteLayout';
 import { FadeIn } from '@/components/site/motion';
 
-const coreFeatures = [
-  { id: 'multi-tenant', icon: Layers,       title: 'Multi-Tenant Architecture', body: 'Each school gets isolated data, a custom subdomain, and dedicated configuration. Zero cross-tenant leakage.' },
-  { id: 'providers',    icon: CreditCard,   title: 'Multi-Provider Payments',   body: 'Accept MTN MoMo, Orange Money, Airtel Money through a single unified API.' },
-  { id: 'security',     icon: ShieldCheck,  title: 'Bank-Grade Security',        body: 'AES-256-GCM encryption for provider credentials, bcrypt for passwords, full audit trails.' },
-  { id: 'verify',       icon: Zap,          title: 'Instant Verification',       body: 'Sub-second provider verification with automatic duplicate detection via UNIQUE(school, provider, external_id).' },
-  { id: 'webhooks',     icon: Webhook,      title: 'Webhook Automation',         body: 'HMAC-verified provider webhooks auto-route payments to the correct school and student.' },
-  { id: 'analytics',    icon: BarChart3,    title: 'Real-Time Analytics',        body: 'Track revenue, balances, provider health and reconciliation lag in beautiful dashboards.' },
-  { id: 'rbac',         icon: KeyRound,     title: 'Role-Based Access',          body: 'Separate permissions for admins, bursars, and auditors — with session-scoped JWTs.' },
-  { id: 'africa',       icon: Globe2,       title: 'Pan-African Ready',          body: 'Deployed across Cameroon, Nigeria, Ghana, Kenya, Senegal and more.' },
-];
-
 const FeaturesInner: React.FC = () => {
   const { setMode } = useAuthDialog();
+
   return (
     <>
-      <section className="relative bg-gradient-to-b from-blue-50/60 to-white py-16">
-        <div className="max-w-7xl mx-auto px-6 text-center">
-          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 mb-4">Core Features</Badge>
-          <h1 className="font-display text-4xl md:text-5xl font-bold tracking-tight">Everything your school needs</h1>
-          <p className="mt-4 text-slate-600 max-w-2xl mx-auto">
-            From student management to payment reconciliation, built for scale and security.
+      {/* Banner hero */}
+      <section className="relative bg-navy text-white py-24 overflow-hidden">
+        <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-gold/60 to-transparent" />
+        <div className="absolute -top-40 -right-20 w-[520px] h-[520px] rounded-full bg-royal/20 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-40 -left-20 w-[520px] h-[520px] rounded-full bg-gold/10 blur-3xl pointer-events-none" />
+        <div className="relative max-w-5xl mx-auto px-6 lg:px-8 text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gold/15 border border-gold/40 text-gold text-[11px] font-semibold uppercase tracking-widest mb-6">
+            <Sparkles className="w-3 h-3" /> Features
+          </div>
+          <h1 className="font-display text-4xl md:text-6xl font-bold tracking-tight leading-[1.05]">
+            Everything you need to manage <span className="text-gold">school payments at scale</span>
+          </h1>
+          <p className="mt-5 text-lg text-slate-300 max-w-2xl mx-auto">
+            A full fintech stack — verification, reconciliation, encryption, reporting — designed for African
+            schools of every size.
           </p>
         </div>
       </section>
 
-      <section className="bg-white pb-20">
-        <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {coreFeatures.map((f, i) => (
-            <FadeIn key={f.title} delay={i * 0.05}>
-              <Card id={f.id} className="p-5 bg-white border-slate-100 h-full hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 scroll-mt-24">
-                <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center mb-3">
-                  <f.icon className="w-5 h-5 text-blue-600" />
-                </div>
-                <h3 className="font-semibold mb-1.5">{f.title}</h3>
-                <p className="text-sm text-slate-600 leading-relaxed">{f.body}</p>
-              </Card>
-            </FadeIn>
-          ))}
-        </div>
-      </section>
+      {/* Section 1: Payment automation */}
+      <FeatureSection
+        id="automation"
+        label="Payment automation"
+        title="Verify and credit students automatically"
+        body="Parents send the transaction ID; we query the provider in real time, verify the amount, credit the student ledger, and write the audit record — all in under two seconds."
+        items={[
+          { icon: Zap,  title: 'Sub-second verification' },
+          { icon: RotateCcw, title: 'Auto-reconciliation worker' },
+          { icon: CheckCircle2, title: 'Duplicate protection by design' },
+          { icon: Activity, title: 'Real-time student balance ledger' }
+        ]}
+        accent="royal"
+      />
 
-      <section className="bg-slate-950 text-white py-20">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="text-center mb-12">
-            <Badge variant="outline" className="bg-blue-950 text-blue-300 border-blue-900 mb-3">Architecture</Badge>
-            <h2 className="font-display text-3xl md:text-4xl font-bold">Built for multi-tenant scale</h2>
-            <p className="mt-3 text-slate-400 max-w-2xl mx-auto">Production-grade architecture with tenant isolation, encrypted credentials, and horizontal scaling.</p>
-          </div>
-          <div className="grid md:grid-cols-2 gap-5">
-            <div className="p-6 rounded-xl border border-slate-800 bg-slate-900/60">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-9 h-9 rounded-lg bg-blue-500/15 flex items-center justify-center"><Lock className="w-4 h-4 text-blue-400" /></div>
-                <h3 className="font-semibold">Tenant Isolation</h3>
-              </div>
-              <pre className="bg-black/40 rounded-lg p-4 text-xs text-slate-300 overflow-x-auto font-mono leading-relaxed">
-{`// Every query is scoped by school_id
-db.query(
-  \`SELECT * FROM students
-   WHERE school_id = $1\`,
-  [req.school.id]
-); // ← isolated`}
-              </pre>
-            </div>
-            <div className="p-6 rounded-xl border border-slate-800 bg-slate-900/60">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="w-9 h-9 rounded-lg bg-indigo-500/15 flex items-center justify-center"><Layers className="w-4 h-4 text-indigo-400" /></div>
-                <h3 className="font-semibold">Provider Abstraction</h3>
-              </div>
-              <pre className="bg-black/40 rounded-lg p-4 text-xs text-slate-300 overflow-x-auto font-mono leading-relaxed">
-{`class BaseProvider {
-  async verifyTransaction(externalId) {...}
-}
-class MTNProvider    extends BaseProvider {...}
-class OrangeProvider extends BaseProvider {...}
-// dynamic dispatch per school config`}
-              </pre>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* Section 2: Multi-provider */}
+      <FeatureSection
+        id="providers"
+        label="Multi-provider integration"
+        title="MTN, Orange, Airtel — one API"
+        body="Plug in any provider's credentials; we handle the quirks. Add a new network without re-wiring your app. Webhooks come HMAC-verified out of the box."
+        items={[
+          { icon: CreditCard, title: 'MTN MoMo' },
+          { icon: CreditCard, title: 'Orange Money' },
+          { icon: CreditCard, title: 'Airtel Money' },
+          { icon: Webhook, title: 'HMAC-verified webhooks' }
+        ]}
+        accent="gold"
+        reverse
+      />
 
-      <section className="bg-gradient-to-br from-blue-600 to-indigo-700 text-white py-14">
-        <div className="max-w-4xl mx-auto px-6 text-center">
-          <h2 className="font-display text-3xl font-bold">See it in your dashboard</h2>
-          <p className="mt-2 text-blue-100">Spin up a free trial and explore every feature live.</p>
-          <div className="mt-6 flex items-center justify-center gap-3 flex-wrap">
-            <Button size="lg" className="bg-white text-blue-700 hover:bg-blue-50" onClick={() => setMode('register')}>
-              Start Free Trial <ArrowRight className="w-4 h-4 ml-1" />
+      {/* Section 3: Real-time reporting */}
+      <FeatureSection
+        id="reporting"
+        label="Real-time reporting"
+        title="Dashboards that actually update"
+        body="Live revenue by provider, pending transactions, reconciliation lag, per-student balances, per-grade totals. Export to CSV for your auditors without leaving the page."
+        items={[
+          { icon: BarChart3, title: 'Live revenue breakdowns' },
+          { icon: FileText, title: 'CSV export (10K rows)' },
+          { icon: Activity, title: 'Reconciliation lag timer' },
+          { icon: Users, title: 'Per-student & per-grade totals' }
+        ]}
+        accent="royal"
+      />
+
+      {/* Section 4: Security & encryption */}
+      <FeatureSection
+        id="security"
+        label="Security & encryption"
+        title="Bank-grade, by default"
+        body="AES-256-GCM for provider credentials. bcrypt for passwords. SHA-256 hashed API keys. TLS everywhere. Rotate any secret in a single click — and revoke the previous in the same transaction."
+        items={[
+          { icon: Lock, title: 'AES-256-GCM at rest' },
+          { icon: ShieldCheck, title: 'Replay-protected by UNIQUE index' },
+          { icon: KeyRound, title: 'One-click API key rotation' },
+          { icon: Layers, title: 'Multi-tenant isolation (school_id)' }
+        ]}
+        accent="gold"
+        reverse
+      />
+
+      {/* Section 5: API & webhooks */}
+      <FeatureSection
+        id="api"
+        label="API & webhooks"
+        title="Build on SchoolPay from your own site"
+        body="Drop the widget.js into any HTML page, or call the REST endpoint from your backend. Incoming webhooks from providers are HMAC-verified and auto-routed to the right tenant."
+        items={[
+          { icon: Webhook, title: 'POST /api/public/verify-payment' },
+          { icon: Globe2, title: 'widget.js drop-in form' },
+          { icon: Building2, title: 'Provider → SchoolPay webhooks' },
+          { icon: FileText, title: 'OpenAPI spec + error codes' }
+        ]}
+        accent="royal"
+        cta={{ label: 'Read API docs', to: '/developers' }}
+      />
+
+      {/* CTA */}
+      <section className="relative bg-navy text-white py-20 overflow-hidden">
+        <div className="absolute -top-20 -right-20 w-[420px] h-[420px] rounded-full bg-royal/15 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-20 -left-20 w-[420px] h-[420px] rounded-full bg-gold/10 blur-3xl pointer-events-none" />
+        <div className="relative max-w-4xl mx-auto px-6 lg:px-8 text-center">
+          <h2 className="font-display text-3xl md:text-4xl font-bold">See these features live</h2>
+          <p className="mt-3 text-slate-300">Start a free trial, configure your providers, and collect your first MoMo payment today.</p>
+          <div className="mt-8 flex items-center justify-center gap-3 flex-wrap">
+            <Button size="lg" className="bg-gold hover:bg-gold-600 text-navy font-semibold" onClick={() => setMode('register')}>
+              Start Free Trial <ArrowRight className="w-4 h-4 ml-1.5" />
             </Button>
-            <Button asChild size="lg" variant="outline" className="border-white text-white bg-transparent hover:bg-white/10">
-              <Link to="/pricing">View pricing</Link>
+            <Button asChild size="lg" variant="outline" className="border-white/30 text-white bg-white/5 hover:bg-white/15 hover:text-white">
+              <Link to="/pricing">See pricing</Link>
             </Button>
-          </div>
-          <div className="mt-5 flex items-center justify-center gap-6 text-sm text-blue-100 flex-wrap">
-            <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4" /> 14-day trial</span>
-            <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4" /> No credit card</span>
-            <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4" /> Cancel anytime</span>
           </div>
         </div>
       </section>
     </>
+  );
+};
+
+/**
+ * Alternating feature section — text on one side, icon card on the other.
+ * Swap sides with `reverse`. Accent `royal` or `gold` drives the color.
+ */
+const FeatureSection: React.FC<{
+  id: string;
+  label: string;
+  title: string;
+  body: string;
+  items: { icon: React.ComponentType<{ className?: string }>; title: string }[];
+  accent: 'royal' | 'gold';
+  reverse?: boolean;
+  cta?: { label: string; to: string };
+}> = ({ id, label, title, body, items, accent, reverse, cta }) => {
+  const eyebrow = accent === 'royal' ? 'text-royal' : 'text-gold-600';
+  const chip =
+    accent === 'royal'
+      ? 'bg-royal/10 text-royal'
+      : 'bg-gold/15 text-gold-600';
+  return (
+    <section id={id} className="py-24 bg-white border-b border-slate-200 scroll-mt-24">
+      <div className="max-w-7xl mx-auto px-6 lg:px-8">
+        <div className={`grid lg:grid-cols-2 gap-12 items-center ${reverse ? 'lg:[&>*:first-child]:order-last' : ''}`}>
+          <FadeIn>
+            <div className={`text-[11px] uppercase tracking-[0.25em] font-semibold mb-3 ${eyebrow}`}>{label}</div>
+            <h2 className="font-display text-3xl md:text-4xl font-bold text-navy tracking-tight mb-4">{title}</h2>
+            <p className="text-slate-600 text-lg leading-relaxed mb-6 max-w-xl">{body}</p>
+            {cta && (
+              <Button asChild variant="outline" className="border-navy text-navy hover:bg-navy hover:text-white">
+                <Link to={cta.to}>{cta.label} <ArrowRight className="w-4 h-4 ml-1.5" /></Link>
+              </Button>
+            )}
+          </FadeIn>
+          <FadeIn delay={0.1}>
+            <div className="grid grid-cols-2 gap-4">
+              {items.map((it) => (
+                <div key={it.title} className="p-5 rounded-2xl bg-white border border-slate-200 hover:shadow-lg hover:-translate-y-0.5 transition-all">
+                  <div className={`w-10 h-10 rounded-lg flex items-center justify-center mb-3 ${chip}`}>
+                    <it.icon className="w-5 h-5" />
+                  </div>
+                  <div className="font-semibold text-navy text-sm leading-snug">{it.title}</div>
+                </div>
+              ))}
+            </div>
+          </FadeIn>
+        </div>
+      </div>
+    </section>
   );
 };
 
