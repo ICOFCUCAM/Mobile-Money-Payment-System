@@ -253,25 +253,28 @@ const HomeInner: React.FC = () => {
         </div>
       </section>
 
-      {/* Logo wall */}
-      <section className="border-b border-slate-100 bg-white py-10">
-        <div className="max-w-7xl mx-auto px-6">
+      {/* Trusted by schools — logo strip */}
+      <section className="bg-white border-b border-slate-100 py-14">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
           <FadeIn>
-            <div className="text-center text-xs uppercase tracking-widest text-slate-400 mb-6">
-              Trusted by schools across Africa
+            <div className="text-center text-[11px] uppercase tracking-[0.25em] text-slate-500 font-semibold mb-8">
+              Trusted by <span className="text-navy">500+ schools</span> across Africa
             </div>
-            <div className="flex items-center justify-around flex-wrap gap-x-10 gap-y-5 opacity-70 grayscale">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-y-6 gap-x-6 items-center">
               {[
-                { name: 'Greenwood High',        icon: GraduationCap },
-                { name: 'Lycée Saint-Joseph',   icon: Building2 },
-                { name: 'Nairobi Prep',          icon: Globe2 },
-                { name: 'Quin Chama Academy',    icon: ShieldCheck },
-                { name: 'Accra International',   icon: Layers },
-                { name: 'Dakar Montessori',      icon: CreditCard },
+                { name: 'Greenwood High',       icon: GraduationCap },
+                { name: 'Lycée Saint-Joseph',  icon: Building2 },
+                { name: 'Nairobi Prep',         icon: Globe2 },
+                { name: 'Riverbend Academy',    icon: ShieldCheck },
+                { name: 'Accra International',  icon: Layers },
+                { name: 'Dakar Montessori',     icon: CreditCard },
               ].map((l) => (
-                <div key={l.name} className="flex items-center gap-2 text-slate-600">
+                <div
+                  key={l.name}
+                  className="flex items-center justify-center gap-2 text-slate-500 hover:text-navy transition-colors grayscale hover:grayscale-0"
+                >
                   <l.icon className="w-5 h-5" />
-                  <span className="font-display font-semibold tracking-tight">{l.name}</span>
+                  <span className="font-display font-semibold text-sm tracking-tight">{l.name}</span>
                 </div>
               ))}
             </div>
