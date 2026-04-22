@@ -92,29 +92,38 @@ function withContext(ctx, fn) {
  * response finishes.
  */
 function requestLogger(req, res, next) {
-  const crypto = require('crypto');
-  const trace_id = req.headers['x-request-id'] || crypto.randomUUID();
-  res.setHeader('x-request-id', trace_id);
-  const started = Date.now();
+  // Defensive: anything we do here is best-effort. If it throws, we MUST
+  // still call next() — otherwise the whole app becomes unreachable.
+  try {
+    const crypto = require('crypto');
+    const trace_id = req.headers['x-request-id'] || crypto.randomUUID();
+    try { res.setHeader('x-request-id', trace_id); } catch (_) { /* headers already sent */ }
+    const started = Date.now();
 
-  const ctx = {
-    trace_id,
-    school_id: req.school && req.school.id,
-    user_id:   req.user && req.user.id,
-    method:    req.method,
-    path:      req.originalUrl || req.url
-  };
+    const ctx = {
+      trace_id,
+      school_id: req.school && req.school.id,
+      user_id:   req.user && req.user.id,
+      method:    req.method,
+      path:      req.originalUrl || req.url
+    };
 
-  ctxStore.run(ctx, () => {
-    res.on('finish', () => {
-      emit('INFO', [{
-        msg: 'request',
-        status: res.statusCode,
-        duration_ms: Date.now() - started
-      }]);
+    return ctxStore.run(ctx, () => {
+      // Access-log line when the response finishes. Wrapped in try/catch
+      // because on Vercel the Lambda may be disposing resources by the
+      // time this fires — a throw here would surface as FUNCTION_INVOCATION_FAILED.
+      res.on('finish', () => {
+        try {
+          emit('INFO', [{ msg: 'request', status: res.statusCode, duration_ms: Date.now() - started }]);
+        } catch (_) { /* swallow */ }
+      });
+      next();
     });
+  } catch (err) {
+    // Never block the handler pipeline on a logger bug.
+    try { console.error('[requestLogger] failed:', err && err.message); } catch (_) {}
     next();
-  });
+  }
 }
 
 module.exports = {

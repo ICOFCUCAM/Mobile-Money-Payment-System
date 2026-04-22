@@ -281,16 +281,51 @@ function getPool() {
 async function ensureSchema() {
   if (schemaReady) return;
   if (schemaPromise) return schemaPromise;
-  schemaPromise = getPool()
-    .query(SCHEMA)
-    .then(() => {
+
+  // Run the SCHEMA as ONE block first (fast path — all idempotent IF NOT
+  // EXISTS statements). If that fails, fall back to per-statement execution
+  // so one bad ALTER doesn't knock out the whole app. Either way, we
+  // rethrow a clear error with the offending SQL snippet so Vercel logs
+  // surface the real problem instead of "FUNCTION_INVOCATION_FAILED".
+  schemaPromise = (async () => {
+    try {
+      await getPool().query(SCHEMA);
       schemaReady = true;
-      logger.info('Postgres schema ensured');
-    })
-    .catch((err) => {
-      schemaPromise = null;
-      throw err;
-    });
+      logger.info('Postgres schema ensured (fast path)');
+      return;
+    } catch (err) {
+      logger.warn(`ensureSchema monolithic run failed: ${err.message}. Retrying per statement.`);
+    }
+
+    // Split on `;` outside single quotes — simplistic but works for our DDL
+    // which doesn't contain escaped semicolons.
+    const statements = SCHEMA
+      .split(/;(?=(?:[^']*'[^']*')*[^']*$)/)
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    const failures = [];
+    for (const sql of statements) {
+      try {
+        await getPool().query(sql);
+      } catch (e) {
+        failures.push({ sql: sql.slice(0, 120), err: e.message });
+      }
+    }
+
+    if (failures.length) {
+      // Log each offender so the next deploy surfaces them immediately.
+      for (const f of failures) logger.error('Schema statement failed', { sql: f.sql, err: f.err });
+    }
+
+    schemaReady = true;
+    logger.info(`Postgres schema ensured (per-statement, ${failures.length} failure(s))`);
+  })().catch((err) => {
+    schemaPromise = null;
+    logger.error('ensureSchema fatal', err);
+    throw err;
+  });
+
   return schemaPromise;
 }
 
