@@ -1,0 +1,227 @@
+'use strict';
+
+/**
+ * Baseline migration — captures everything that used to live in the
+ * monolithic ensureSchema() string. All DDL uses IF NOT EXISTS so it's
+ * a no-op on existing production databases: the _migrations row will
+ * simply be inserted on first run of the new code, and subsequent deploys
+ * skip it.
+ *
+ * Never edit this file once it has shipped. New schema changes go into a
+ * fresh, strictly-forward migration (002_*.js, 003_*.js, ...).
+ */
+
+const SQL = `
+CREATE TABLE IF NOT EXISTS schools (
+  id                      TEXT PRIMARY KEY,
+  name                    TEXT NOT NULL,
+  slug                    TEXT NOT NULL UNIQUE,
+  email                   TEXT NOT NULL UNIQUE,
+  phone                   TEXT,
+  api_key_hash            TEXT NOT NULL,
+  api_key_prefix          TEXT NOT NULL,
+  subscription_plan       TEXT NOT NULL DEFAULT 'basic',
+  subscription_status     TEXT NOT NULL DEFAULT 'active',
+  subscription_expires_at TIMESTAMPTZ,
+  is_active               BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_schools_slug ON schools(slug);
+CREATE INDEX IF NOT EXISTS idx_schools_api_key_hash ON schools(api_key_hash);
+
+CREATE TABLE IF NOT EXISTS users (
+  id            TEXT PRIMARY KEY,
+  school_id     TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  email         TEXT NOT NULL,
+  password_hash TEXT NOT NULL,
+  full_name     TEXT,
+  role          TEXT NOT NULL CHECK (role IN ('admin','bursar','auditor')),
+  is_active     BOOLEAN NOT NULL DEFAULT TRUE,
+  last_login_at TIMESTAMPTZ,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(school_id, email)
+);
+CREATE INDEX IF NOT EXISTS idx_users_school ON users(school_id);
+
+CREATE TABLE IF NOT EXISTS students (
+  id           TEXT PRIMARY KEY,
+  school_id    TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  student_code TEXT NOT NULL,
+  full_name    TEXT NOT NULL,
+  class_name   TEXT,
+  phone        TEXT,
+  balance      BIGINT NOT NULL DEFAULT 0,
+  currency     TEXT NOT NULL DEFAULT 'XAF',
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(school_id, student_code)
+);
+CREATE INDEX IF NOT EXISTS idx_students_school ON students(school_id);
+CREATE INDEX IF NOT EXISTS idx_students_phone ON students(school_id, phone);
+
+CREATE TABLE IF NOT EXISTS payment_configs (
+  id         TEXT PRIMARY KEY,
+  school_id  TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  provider   TEXT NOT NULL,
+  api_key    TEXT NOT NULL,
+  api_secret TEXT NOT NULL,
+  base_url   TEXT,
+  metadata   TEXT,
+  is_active  BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(school_id, provider)
+);
+CREATE INDEX IF NOT EXISTS idx_payment_configs_school ON payment_configs(school_id);
+
+CREATE TABLE IF NOT EXISTS transactions (
+  id           TEXT PRIMARY KEY,
+  school_id    TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  student_id   TEXT REFERENCES students(id) ON DELETE SET NULL,
+  provider     TEXT NOT NULL,
+  external_id  TEXT NOT NULL,
+  amount       BIGINT NOT NULL,
+  currency     TEXT NOT NULL DEFAULT 'XAF',
+  status       TEXT NOT NULL CHECK (status IN ('pending','success','failed','reversed')),
+  phone        TEXT,
+  raw_response TEXT,
+  verified_at  TIMESTAMPTZ,
+  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  UNIQUE(school_id, provider, external_id)
+);
+CREATE INDEX IF NOT EXISTS idx_tx_school ON transactions(school_id);
+CREATE INDEX IF NOT EXISTS idx_tx_student ON transactions(student_id);
+CREATE INDEX IF NOT EXISTS idx_tx_status ON transactions(school_id, status);
+CREATE INDEX IF NOT EXISTS idx_tx_created ON transactions(school_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS subscriptions (
+  id         TEXT PRIMARY KEY,
+  school_id  TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  plan       TEXT NOT NULL,
+  status     TEXT NOT NULL,
+  started_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  expires_at TIMESTAMPTZ,
+  amount     INTEGER,
+  currency   TEXT DEFAULT 'USD',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_sub_school ON subscriptions(school_id);
+
+CREATE TABLE IF NOT EXISTS password_resets (
+  id         TEXT PRIMARY KEY,
+  user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token_hash TEXT NOT NULL,
+  expires_at TIMESTAMPTZ NOT NULL,
+  used_at    TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_password_resets_token ON password_resets(token_hash);
+CREATE INDEX IF NOT EXISTS idx_password_resets_user ON password_resets(user_id);
+
+CREATE TABLE IF NOT EXISTS audit_logs (
+  id         BIGSERIAL PRIMARY KEY,
+  school_id  TEXT,
+  user_id    TEXT,
+  action     TEXT NOT NULL,
+  entity     TEXT,
+  entity_id  TEXT,
+  metadata   TEXT,
+  ip         TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_audit_school ON audit_logs(school_id);
+CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at DESC);
+
+-- Billing columns on schools (per-school MoMo billing_ref + wallet).
+ALTER TABLE schools ADD COLUMN IF NOT EXISTS billing_ref         TEXT;
+ALTER TABLE schools ADD COLUMN IF NOT EXISTS wallet_balance_cents BIGINT NOT NULL DEFAULT 0;
+ALTER TABLE schools ADD COLUMN IF NOT EXISTS billing_currency    TEXT NOT NULL DEFAULT 'USD';
+ALTER TABLE schools ADD COLUMN IF NOT EXISTS custom_price_cents  BIGINT;
+ALTER TABLE schools ADD COLUMN IF NOT EXISTS is_billing_tenant   BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE schools ADD COLUMN IF NOT EXISTS billing_model       TEXT NOT NULL DEFAULT 'postpaid';
+ALTER TABLE schools ADD COLUMN IF NOT EXISTS license_tier        TEXT;
+
+-- Per-user 2FA (TOTP). AES-256-GCM encrypted at rest.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_secret       TEXT;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_enabled_at   TIMESTAMPTZ;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS totp_backup_codes TEXT;
+
+CREATE TABLE IF NOT EXISTS totp_setups (
+  user_id     TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  secret      TEXT NOT NULL,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  expires_at  TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '15 minutes')
+);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_schools_billing_ref ON schools(billing_ref)
+  WHERE billing_ref IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS billing_intents (
+  id              TEXT PRIMARY KEY,
+  school_id       TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  intent_type     TEXT NOT NULL CHECK (intent_type IN ('subscription', 'wallet_topup')),
+  plan            TEXT,
+  billing_period  TEXT CHECK (billing_period IN ('monthly','yearly')),
+  amount_cents    BIGINT NOT NULL,
+  local_amount    BIGINT,
+  local_currency  TEXT,
+  reference       TEXT NOT NULL,
+  status          TEXT NOT NULL CHECK (status IN ('awaiting_payment','paid','expired','cancelled')) DEFAULT 'awaiting_payment',
+  expires_at      TIMESTAMPTZ NOT NULL,
+  paid_at         TIMESTAMPTZ,
+  paid_via_rail   TEXT,
+  paid_via_tx_id  TEXT,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_billing_intents_school ON billing_intents(school_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_billing_intents_ref    ON billing_intents(reference);
+CREATE INDEX IF NOT EXISTS idx_billing_intents_status ON billing_intents(status);
+
+CREATE TABLE IF NOT EXISTS wallet_transactions (
+  id                TEXT PRIMARY KEY,
+  school_id         TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  kind              TEXT NOT NULL CHECK (kind IN (
+                      'topup_momo', 'topup_bank', 'topup_manual',
+                      'debit_subscription', 'debit_prepaid', 'debit_refund'
+                    )),
+  amount_cents      BIGINT NOT NULL,
+  balance_after     BIGINT NOT NULL,
+  currency          TEXT NOT NULL DEFAULT 'USD',
+  billing_intent_id TEXT REFERENCES billing_intents(id) ON DELETE SET NULL,
+  memo              TEXT,
+  meta              TEXT,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_wallet_tx_school ON wallet_transactions(school_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_wallet_tx_intent ON wallet_transactions(billing_intent_id);
+
+CREATE TABLE IF NOT EXISTS idempotency_keys (
+  id              BIGSERIAL PRIMARY KEY,
+  scope           TEXT NOT NULL,
+  key             TEXT NOT NULL,
+  request_hash    TEXT NOT NULL,
+  status_code     INTEGER,
+  response_body   JSONB,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  expires_at      TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '24 hours'),
+  UNIQUE (scope, key)
+);
+CREATE INDEX IF NOT EXISTS idx_idempotency_expires ON idempotency_keys(expires_at);
+
+-- Seed the internal billing tenant (owns the corporate MoMo accounts).
+INSERT INTO schools
+  (id, name, slug, email, phone, api_key_hash, api_key_prefix, is_billing_tenant, is_active)
+VALUES
+  ('schoolpay-billing', 'SchoolPay Billing', 'schoolpay-billing',
+   'billing@schoolpay.internal', '+237680688123',
+   'internal-billing-tenant-no-api-key-exposed', 'sys_',
+   TRUE, TRUE)
+ON CONFLICT (id) DO NOTHING;
+`;
+
+module.exports = {
+  id: '001_initial_schema',
+  async up(client) {
+    await client.query(SQL);
+  }
+};
