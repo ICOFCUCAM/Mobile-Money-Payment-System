@@ -2,14 +2,18 @@
 
 const MTNProvider = require('./MTNProvider');
 const OrangeProvider = require('./OrangeProvider');
+const BankRailProvider = require('./BankRailProvider');
 const config = require('../config');
 const { decrypt } = require('../core/encryption');
 const { db } = require('../core/database');
 const { NotFoundError, ValidationError } = require('../core/errors');
 
 const REGISTRY = {
-  [MTNProvider.id]: { Provider: MTNProvider, defaultBaseUrl: config.providers.mtn.baseUrl },
-  [OrangeProvider.id]: { Provider: OrangeProvider, defaultBaseUrl: config.providers.orange.baseUrl }
+  [MTNProvider.id]:      { Provider: MTNProvider,    defaultBaseUrl: config.providers.mtn.baseUrl },
+  [OrangeProvider.id]:   { Provider: OrangeProvider, defaultBaseUrl: config.providers.orange.baseUrl },
+  // Scaffolded — parses webhook payloads in a generic shape. Concrete
+  // aggregator (Flutterwave / Paystack) can extend BankRailProvider later.
+  [BankRailProvider.id]: { Provider: BankRailProvider, defaultBaseUrl: '' }
 };
 
 /**

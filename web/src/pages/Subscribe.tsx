@@ -19,8 +19,20 @@ import {
  * the inbound webhook on our billing tenant does the crediting.
  */
 
-const CORPORATE_MOMO_MTN = '+237 680 688 123';
-const CORPORATE_MOMO_ORANGE = '+237 6XX XXX XXX (coming soon)';
+// Payment rails available today + scaffolded ones. When we flip a rail
+// live, set `live: true` and update the `account` string.
+type Rail = {
+  id: 'mtn' | 'orange' | 'bank';
+  label: string;
+  account: string;
+  hint?: string;
+  live: boolean;
+};
+const RAILS: Rail[] = [
+  { id: 'mtn',    label: 'MTN Mobile Money',    account: '+237 680 688 123',    hint: 'Dial *126# or open the MoMo app',   live: true  },
+  { id: 'orange', label: 'Orange Money',        account: 'Coming soon',          hint: "We're onboarding our Orange Money merchant account", live: false },
+  { id: 'bank',   label: 'Bank transfer',       account: 'Contact billing@schoolpay.example', hint: 'For institutional clients who prefer wire transfer', live: false }
+];
 
 // Local currencies we quote in. Sorted by likely user base; pre-select by
 // the school's country if we add country detection later.
@@ -326,6 +338,7 @@ const InstructionsStep: React.FC<{
 }> = ({ intent, fx, currency, onCopy, onBack }) => {
   const usd = (intent.amount_cents / 100).toFixed(2);
   const showLocal = currency !== 'USD' && fx;
+  const [rail, setRail] = useState<Rail>(RAILS[0]);
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -342,25 +355,62 @@ const InstructionsStep: React.FC<{
       </div>
 
       <Card className="p-0 shadow-xl border-slate-200 overflow-hidden">
+        {/* Rail picker */}
+        <div className="p-5 md:p-6 border-b border-slate-100 bg-slate-50/40">
+          <div className="text-[11px] uppercase tracking-widest text-slate-500 font-semibold mb-3">
+            Pick a payment rail
+          </div>
+          <div className="grid sm:grid-cols-3 gap-2">
+            {RAILS.map((r) => {
+              const selected = rail.id === r.id;
+              return (
+                <button
+                  key={r.id}
+                  onClick={() => r.live && setRail(r)}
+                  disabled={!r.live}
+                  className={`relative text-left p-3 rounded-xl border transition-all ${
+                    selected
+                      ? 'border-royal bg-royal/5 shadow-sm'
+                      : r.live
+                        ? 'border-slate-200 bg-white hover:border-royal/40'
+                        : 'border-slate-200 bg-slate-50 opacity-60 cursor-not-allowed'
+                  }`}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <div className={`text-[13px] font-semibold ${selected ? 'text-royal' : 'text-navy'}`}>{r.label}</div>
+                    {r.live
+                      ? <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[9px] font-bold uppercase">Live</Badge>
+                      : <Badge variant="outline" className="bg-slate-100 text-slate-500 text-[9px] font-bold uppercase">Soon</Badge>}
+                  </div>
+                  <div className="text-[11px] text-slate-500">{r.hint}</div>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Step rows */}
-        <Step n={1} title="Open your MTN MoMo menu">
-          Dial <code className="font-mono text-navy bg-slate-100 px-1.5 py-0.5 rounded">*126#</code> (Cameroon) or open the MoMo app.
+        <Step n={1} title={rail.id === 'mtn' ? 'Open your MTN MoMo menu' : rail.id === 'orange' ? 'Open your Orange Money menu' : 'Initiate a bank transfer'}>
+          {rail.id === 'mtn' && <>Dial <code className="font-mono text-navy bg-slate-100 px-1.5 py-0.5 rounded">*126#</code> (Cameroon) or open the MoMo app.</>}
+          {rail.id === 'orange' && <>Dial <code className="font-mono text-navy bg-slate-100 px-1.5 py-0.5 rounded">#150#</code> or open the Orange Money app (launching soon).</>}
+          {rail.id === 'bank' && <>From your bank's online portal, create a new payee with the details below.</>}
         </Step>
 
-        <Step n={2} title="Send money to our corporate number">
+        <Step n={2} title="Send to our corporate account">
           <div className="mt-2 flex items-center justify-between gap-3 p-3 rounded-lg bg-slate-50 border border-slate-200">
-            <div className="flex items-center gap-2">
-              <Smartphone className="w-4 h-4 text-royal" />
-              <span className="font-mono font-semibold text-navy">{CORPORATE_MOMO_MTN}</span>
+            <div className="flex items-center gap-2 min-w-0">
+              <Smartphone className="w-4 h-4 text-royal shrink-0" />
+              <span className="font-mono font-semibold text-navy truncate">{rail.account}</span>
             </div>
-            <button
-              onClick={() => onCopy(CORPORATE_MOMO_MTN, 'Number')}
-              className="text-royal hover:underline text-sm font-medium inline-flex items-center gap-1"
-            >
-              <Copy className="w-3.5 h-3.5" /> Copy
-            </button>
+            {rail.live && (
+              <button
+                onClick={() => onCopy(rail.account, 'Account')}
+                className="shrink-0 text-royal hover:underline text-sm font-medium inline-flex items-center gap-1"
+              >
+                <Copy className="w-3.5 h-3.5" /> Copy
+              </button>
+            )}
           </div>
-          <div className="mt-2 text-[11px] text-slate-500">Orange Money: {CORPORATE_MOMO_ORANGE}</div>
         </Step>
 
         <Step n={3} title={showLocal ? `Enter the amount: ${fx!.local_display}` : `Enter the amount: $${usd}`}>
