@@ -20,6 +20,7 @@ const subscriptionsRoutes = require('./modules/subscriptions/subscriptions.route
 const webhooksRoutes = require('./modules/webhooks/webhooks.routes');
 const dashboardRoutes = require('./modules/dashboard/dashboard.routes');
 const publicRoutes = require('./modules/public/public.routes');
+const billingRoutes = require('./modules/billing/billing.routes');
 
 const app = express();
 
@@ -82,6 +83,7 @@ app.use('/api/public', publicRoutes);
 app.use('/api/students', studentsRoutes);
 app.use('/api/payments', paymentsRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+app.use('/api/billing', billingRoutes);
 
 // Provider webhooks — unauthenticated at the HTTP layer; integrity is enforced
 // via provider-specific signature checks inside the handler.

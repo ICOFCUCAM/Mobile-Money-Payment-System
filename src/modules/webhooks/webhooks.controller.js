@@ -4,17 +4,19 @@ const { db } = require('../../core/database');
 const { AuthError, NotFoundError, ValidationError } = require('../../core/errors');
 const { REGISTRY, getProviderForSchool } = require('../../providers/ProviderFactory');
 const paymentsService = require('../payments/payments.service');
+const billingService = require('../billing/billing.service');
 const logger = require('../../core/logger');
 
 /**
  * Incoming provider webhook.
  *
  * Route shape: POST /webhooks/:provider/:schoolSlug
- * Providers post here after successful mobile-money collections. We:
- *   1. Look up the school by slug.
- *   2. Instantiate the school's provider instance (with its creds).
- *   3. Validate the signature using the school's own api_secret.
- *   4. Parse + upsert the transaction idempotently.
+ *
+ * Two flows, branched on the schoolSlug:
+ *   • schoolpay-billing  →  credit the payer school's wallet via the
+ *     reference code in the payment memo (our corporate MoMo account).
+ *   • any other slug     →  record as a student payment on that tenant
+ *     (the existing path).
  */
 async function handle(req, res, next) {
   try {
@@ -35,8 +37,26 @@ async function handle(req, res, next) {
     }
 
     const event = provider.parseWebhook(req.body);
-    const result = await paymentsService.recordWebhookTransaction(school, providerId, event, rawBody);
 
+    // Billing-tenant branch: reroute incoming payments to the wallet ledger
+    // using the reference in the memo, NOT the student ledger.
+    if (school.is_billing_tenant) {
+      const reference =
+        event.reference || event.memo || event.narration ||
+        (req.body && (req.body.reference || req.body.memo || req.body.narration));
+      const result = await billingService.creditFromInboundPayment({
+        rail: `${providerId.toLowerCase()}_momo`,
+        externalId: event.externalId,
+        reference,
+        amountCents: Math.floor(Number(event.amount) || 0),
+        currency: event.currency || 'USD',
+        rawMemo: reference
+      });
+      return res.status(result.credited ? 201 : 200).json({ ok: true, ...result });
+    }
+
+    // School-tenant branch: original student-payment flow.
+    const result = await paymentsService.recordWebhookTransaction(school, providerId, event, rawBody);
     res.status(result.created ? 201 : 200).json({ ok: true, created: result.created });
   } catch (err) {
     next(err);

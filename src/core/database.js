@@ -129,6 +129,79 @@ CREATE TABLE IF NOT EXISTS audit_logs (
 );
 CREATE INDEX IF NOT EXISTS idx_audit_school ON audit_logs(school_id);
 CREATE INDEX IF NOT EXISTS idx_audit_created ON audit_logs(created_at DESC);
+
+-- ───────── Billing (Phase 1) ─────────
+-- A school's permanent MoMo reference code and its wallet balance.
+-- Idempotent ALTERs so repeated ensureSchema() calls stay safe.
+ALTER TABLE schools ADD COLUMN IF NOT EXISTS billing_ref         TEXT;
+ALTER TABLE schools ADD COLUMN IF NOT EXISTS wallet_balance_cents BIGINT NOT NULL DEFAULT 0;
+ALTER TABLE schools ADD COLUMN IF NOT EXISTS billing_currency    TEXT NOT NULL DEFAULT 'USD';
+ALTER TABLE schools ADD COLUMN IF NOT EXISTS custom_price_cents  BIGINT;   -- admin-set override for subscription price
+ALTER TABLE schools ADD COLUMN IF NOT EXISTS is_billing_tenant   BOOLEAN NOT NULL DEFAULT FALSE;
+CREATE UNIQUE INDEX IF NOT EXISTS idx_schools_billing_ref ON schools(billing_ref)
+  WHERE billing_ref IS NOT NULL;
+
+-- "I expect $X from school Y, they'll send it with reference Z."
+-- Intents are short-lived anchors for *directed* payments (checkout flow).
+-- They coexist with permanent per-school billing_ref so a school can also
+-- just send an ad-hoc top-up at any time, no intent required.
+CREATE TABLE IF NOT EXISTS billing_intents (
+  id              TEXT PRIMARY KEY,
+  school_id       TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  intent_type     TEXT NOT NULL CHECK (intent_type IN ('subscription', 'wallet_topup')),
+  plan            TEXT,                    -- 'basic'|'pro'|'enterprise' when subscription
+  billing_period  TEXT CHECK (billing_period IN ('monthly','yearly')),
+  amount_cents    BIGINT NOT NULL,         -- USD cents (canonical)
+  local_amount    BIGINT,                  -- quoted local currency amount (minor units)
+  local_currency  TEXT,                    -- XAF/NGN/KES/...
+  reference       TEXT NOT NULL,           -- may equal school.billing_ref or include a suffix
+  status          TEXT NOT NULL CHECK (status IN ('awaiting_payment','paid','expired','cancelled')) DEFAULT 'awaiting_payment',
+  expires_at      TIMESTAMPTZ NOT NULL,
+  paid_at         TIMESTAMPTZ,
+  paid_via_rail   TEXT,                    -- 'mtn_momo'|'orange_momo'|'bank_transfer'|...
+  paid_via_tx_id  TEXT,                    -- provider external id
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_billing_intents_school ON billing_intents(school_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_billing_intents_ref    ON billing_intents(reference);
+CREATE INDEX IF NOT EXISTS idx_billing_intents_status ON billing_intents(status);
+
+-- Append-only wallet ledger. Every credit (incoming MoMo) and every debit
+-- (subscription charge, prepaid student fee) gets a row so balance can be
+-- re-derived from the ledger if it ever drifts.
+CREATE TABLE IF NOT EXISTS wallet_transactions (
+  id                TEXT PRIMARY KEY,
+  school_id         TEXT NOT NULL REFERENCES schools(id) ON DELETE CASCADE,
+  kind              TEXT NOT NULL CHECK (kind IN (
+                      'topup_momo',           -- incoming MoMo payment
+                      'topup_bank',           -- incoming bank transfer (future)
+                      'topup_manual',         -- admin-credit
+                      'debit_subscription',   -- monthly/yearly subscription charge
+                      'debit_prepaid',        -- per-student prepaid fee
+                      'debit_refund'          -- we refunded something
+                    )),
+  amount_cents      BIGINT NOT NULL,         -- signed: positive for credit, negative for debit
+  balance_after     BIGINT NOT NULL,         -- snapshot after this txn for audit convenience
+  currency          TEXT NOT NULL DEFAULT 'USD',
+  billing_intent_id TEXT REFERENCES billing_intents(id) ON DELETE SET NULL,
+  memo              TEXT,
+  meta              TEXT,                    -- JSON string
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_wallet_tx_school ON wallet_transactions(school_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_wallet_tx_intent ON wallet_transactions(billing_intent_id);
+
+-- Seed the internal "SchoolPay Billing" tenant on first boot. This is the
+-- special school that OWNS the corporate MoMo accounts; every subscription
+-- and top-up payment is an incoming transaction on this tenant.
+INSERT INTO schools
+  (id, name, slug, email, phone, api_key_hash, api_key_prefix, is_billing_tenant, is_active)
+VALUES
+  ('schoolpay-billing', 'SchoolPay Billing', 'schoolpay-billing',
+   'billing@schoolpay.internal', '+237680688123',
+   'internal-billing-tenant-no-api-key-exposed', 'sys_',
+   TRUE, TRUE)
+ON CONFLICT (id) DO NOTHING;
 `;
 
 function buildPool() {
