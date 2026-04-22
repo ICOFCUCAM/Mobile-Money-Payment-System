@@ -1,25 +1,15 @@
 'use strict';
 
 const crypto = require('crypto');
-const otp = require('otplib');
+const { authenticator } = require('otplib');
 const QRCode = require('qrcode');
 const { db, writeAudit } = require('../../core/database');
 const { encrypt, decrypt } = require('../../core/encryption');
 const { AuthError, ValidationError, NotFoundError } = require('../../core/errors');
 
-// otplib v13 functional API. 6-digit TOTP, 30s period, ±1 step drift for
-// clock skew (so a code is valid within a 90-second window).
-const TOTP_OPTS = { digits: 6, period: 30, algorithm: 'sha1', window: 1 };
-function totpGenerate(secret)         { return otp.generateSync({ secret, ...TOTP_OPTS }); }
-function totpVerify(secret, token) {
-  // otplib v13 returns { valid, delta, ... } — unwrap to a boolean.
-  const r = otp.verifySync({ secret, token, ...TOTP_OPTS });
-  return !!(r && r.valid);
-}
-function totpGenerateSecret()         { return otp.generateSecret(); }
-function totpUri(secret, label, issuer) {
-  return otp.generateURI({ secret, label, issuer, ...TOTP_OPTS });
-}
+// 30-second window, 6-digit code, allow ±1 step drift for clock skew (so
+// a code is valid within roughly a 90-second window).
+authenticator.options = { window: 1, step: 30, digits: 6 };
 
 /**
  * Start enrolling a user in TOTP.
@@ -34,10 +24,10 @@ function totpUri(secret, label, issuer) {
  */
 async function startSetup(user) {
   if (!user) throw new AuthError('Not authenticated');
-  const secret = totpGenerateSecret();
+  const secret = authenticator.generateSecret();
   const issuer = 'SchoolPay';
   const label = user.email;
-  const otpauthUri = totpUri(secret, label, issuer);
+  const otpauthUri = authenticator.keyuri(label, issuer, secret);
   const qrDataUrl = await QRCode.toDataURL(otpauthUri);
 
   await db.query(
@@ -67,7 +57,7 @@ async function confirmSetup(user, code) {
   }
   const secret = decrypt(pending.rows[0].secret);
 
-  if (!totpVerify(secret, code.trim())) {
+  if (!authenticator.verify({ token: code.trim(), secret })) {
     throw new ValidationError('Code did not match. Make sure the phone clock is correct.');
   }
 
@@ -118,7 +108,7 @@ async function verifyCode(user, code) {
   // Regular TOTP path
   try {
     const secret = decrypt(user.totp_secret);
-    return totpVerify(secret, clean);
+    return authenticator.verify({ token: clean, secret });
   } catch (_) {
     return false;
   }
