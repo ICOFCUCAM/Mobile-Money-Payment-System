@@ -249,6 +249,16 @@ export const Api = {
     request<{ plans: Record<string, { monthly_cents: number; yearly_cents: number }> }>(
       'GET', '/billing/catalog'
     ),
+  fxQuote: (params: { to: string; usdCents: number }) =>
+    request<{
+      base: 'USD';
+      to: string;
+      rate: number;
+      usd_cents: number;
+      local_amount: number;
+      local_display: string;
+      usd_display: string;
+    }>('GET', `/billing/fx?to=${encodeURIComponent(params.to)}&usdCents=${params.usdCents}`),
   createBillingIntent: (body: {
     intent_type?: 'subscription' | 'wallet_topup';
     plan?: 'basic' | 'pro' | 'enterprise';

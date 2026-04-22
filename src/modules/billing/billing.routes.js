@@ -10,6 +10,8 @@ const router = express.Router();
 
 // GET /api/billing/catalog — public (no auth), used by the checkout page.
 router.get('/catalog', asyncHandler(ctrl.catalog));
+// GET /api/billing/fx — public FX quote (USD → local currency)
+router.get('/fx',      asyncHandler(ctrl.fxQuote));
 
 // The rest of the billing API is JWT-authed tenant-scoped.
 router.use(authJwt);

@@ -22,6 +22,21 @@ import {
 const CORPORATE_MOMO_MTN = '+237 680 688 123';
 const CORPORATE_MOMO_ORANGE = '+237 6XX XXX XXX (coming soon)';
 
+// Local currencies we quote in. Sorted by likely user base; pre-select by
+// the school's country if we add country detection later.
+const SUPPORTED_CURRENCIES: { code: string; label: string }[] = [
+  { code: 'XAF', label: 'Central African CFA (XAF)' },
+  { code: 'XOF', label: 'West African CFA (XOF)' },
+  { code: 'NGN', label: 'Nigerian naira (NGN)' },
+  { code: 'GHS', label: 'Ghanaian cedi (GHS)' },
+  { code: 'KES', label: 'Kenyan shilling (KES)' },
+  { code: 'UGX', label: 'Ugandan shilling (UGX)' },
+  { code: 'TZS', label: 'Tanzanian shilling (TZS)' },
+  { code: 'RWF', label: 'Rwandan franc (RWF)' },
+  { code: 'ZAR', label: 'South African rand (ZAR)' },
+  { code: 'USD', label: 'United States dollar (USD)' }
+];
+
 type Step = 'choose' | 'instructions';
 
 const Subscribe: React.FC = () => {
@@ -32,6 +47,8 @@ const Subscribe: React.FC = () => {
   const [catalog, setCatalog] = useState<Record<string, { monthly_cents: number; yearly_cents: number }>>({});
   const [plan, setPlan] = useState<'basic' | 'pro' | 'enterprise'>('pro');
   const [billing, setBilling] = useState<'monthly' | 'yearly'>('monthly');
+  const [currency, setCurrency] = useState<string>('XAF');
+  const [fx, setFx] = useState<null | { usd_display: string; local_display: string; rate: number; local_amount: number }>(null);
   const [submitting, setSubmitting] = useState(false);
   const [intent, setIntent] = useState<null | {
     id: string;
@@ -54,13 +71,26 @@ const Subscribe: React.FC = () => {
     ? billing === 'monthly' ? catalog[plan].monthly_cents : catalog[plan].yearly_cents
     : 0;
 
+  // Live FX quote: refresh whenever plan/billing/currency change.
+  useEffect(() => {
+    if (!price) { setFx(null); return; }
+    if (currency === 'USD') { setFx(null); return; }
+    Api.fxQuote({ to: currency, usdCents: price })
+      .then((q) => setFx({ usd_display: q.usd_display, local_display: q.local_display, rate: q.rate, local_amount: q.local_amount }))
+      .catch(() => setFx(null));
+  }, [price, currency]);
+
   const submit = async () => {
     setSubmitting(true);
     try {
       const r = await Api.createBillingIntent({
         intent_type: 'subscription',
         plan,
-        billing_period: billing
+        billing_period: billing,
+        // Include the FX-converted local amount so the server stores what
+        // the school actually sees on-screen. Payment tolerance is ±5%.
+        local_amount: fx ? fx.local_amount : undefined,
+        local_currency: currency !== 'USD' ? currency : undefined
       });
       setIntent(r.intent);
       setStep('instructions');
@@ -102,6 +132,8 @@ const Subscribe: React.FC = () => {
           <ChooseStep
             plan={plan} setPlan={setPlan}
             billing={billing} setBilling={setBilling}
+            currency={currency} setCurrency={setCurrency}
+            fx={fx}
             catalog={catalog}
             submitting={submitting}
             onSubmit={submit}
@@ -114,6 +146,8 @@ const Subscribe: React.FC = () => {
             plan={plan}
             billing={billing}
             price={price}
+            fx={fx}
+            currency={currency}
             onCopy={copy}
             onBack={() => setStep('choose')}
           />
@@ -129,10 +163,13 @@ const ChooseStep: React.FC<{
   setPlan: (p: 'basic' | 'pro' | 'enterprise') => void;
   billing: 'monthly' | 'yearly';
   setBilling: (b: 'monthly' | 'yearly') => void;
+  currency: string;
+  setCurrency: (c: string) => void;
+  fx: null | { usd_display: string; local_display: string; rate: number; local_amount: number };
   catalog: Record<string, { monthly_cents: number; yearly_cents: number }>;
   submitting: boolean;
   onSubmit: () => void;
-}> = ({ plan, setPlan, billing, setBilling, catalog, submitting, onSubmit }) => {
+}> = ({ plan, setPlan, billing, setBilling, currency, setCurrency, fx, catalog, submitting, onSubmit }) => {
   const plans: Array<{ id: 'basic' | 'pro' | 'enterprise'; name: string; tag: string; popular?: boolean }> = [
     { id: 'basic',      name: 'Basic',      tag: 'Up to 150 students' },
     { id: 'pro',        name: 'Pro',        tag: 'Up to 750 students', popular: true },
@@ -230,6 +267,38 @@ const ChooseStep: React.FC<{
         })}
       </div>
 
+      {/* Currency selector + live FX preview */}
+      <div className="max-w-md mx-auto mb-6 rounded-2xl border border-slate-200 bg-white p-5">
+        <div className="text-[11px] uppercase tracking-widest text-slate-500 font-semibold mb-2">
+          Pay in your currency
+        </div>
+        <select
+          value={currency}
+          onChange={(e) => setCurrency(e.target.value)}
+          className="w-full p-2.5 rounded-lg border border-slate-300 bg-white text-sm font-medium text-navy"
+        >
+          {SUPPORTED_CURRENCIES.map((c) => (
+            <option key={c.code} value={c.code}>{c.label}</option>
+          ))}
+        </select>
+
+        {currency !== 'USD' && fx && (
+          <div className="mt-4 flex items-center justify-between gap-3 p-3 rounded-lg bg-slate-50 border border-slate-200">
+            <div>
+              <div className="text-[11px] text-slate-500">You'll send approximately</div>
+              <div className="font-display text-2xl font-bold text-navy mt-0.5">{fx.local_display}</div>
+            </div>
+            <div className="text-right text-[11px] text-slate-500">
+              <div>= {fx.usd_display}</div>
+              <div className="mt-0.5">1 USD ≈ {fx.rate.toLocaleString(undefined, { maximumFractionDigits: 2 })} {currency}</div>
+            </div>
+          </div>
+        )}
+        {currency !== 'USD' && !fx && (
+          <div className="mt-3 text-[11px] text-slate-500">Loading today's rate…</div>
+        )}
+      </div>
+
       <div className="text-center">
         <Button
           size="lg"
@@ -250,10 +319,13 @@ const InstructionsStep: React.FC<{
   plan: string;
   billing: string;
   price: number;
+  fx: null | { usd_display: string; local_display: string; rate: number; local_amount: number };
+  currency: string;
   onCopy: (text: string, label: string) => void;
   onBack: () => void;
-}> = ({ intent, onCopy, onBack }) => {
+}> = ({ intent, fx, currency, onCopy, onBack }) => {
   const usd = (intent.amount_cents / 100).toFixed(2);
+  const showLocal = currency !== 'USD' && fx;
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -291,10 +363,20 @@ const InstructionsStep: React.FC<{
           <div className="mt-2 text-[11px] text-slate-500">Orange Money: {CORPORATE_MOMO_ORANGE}</div>
         </Step>
 
-        <Step n={3} title={`Enter the amount: $${usd}`}>
+        <Step n={3} title={showLocal ? `Enter the amount: ${fx!.local_display}` : `Enter the amount: $${usd}`}>
           <div className="mt-2 p-3 rounded-lg bg-slate-50 border border-slate-200 text-sm text-slate-700">
-            Send <b>${usd} USD</b>, or the equivalent in your local currency at today's rate.
-            Your operator will show the local amount before you confirm — that's fine to send.
+            {showLocal ? (
+              <>
+                Send <b>{fx!.local_display}</b> (≈ ${usd} USD at today's rate of
+                1 USD ≈ {fx!.rate.toLocaleString(undefined, { maximumFractionDigits: 2 })} {currency}).
+                Any amount within ±5% of this will be accepted — FX fluctuations don't trip the credit flow.
+              </>
+            ) : (
+              <>
+                Send <b>${usd} USD</b>, or the equivalent in your local currency at today's rate.
+                Any amount within ±5% of the USD target is fine.
+              </>
+            )}
           </div>
         </Step>
 
