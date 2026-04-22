@@ -697,6 +697,80 @@ const HomeInner: React.FC = () => {
         </div>
       </section>
 
+      {/* Features grid — 6 cards */}
+      <section className="bg-slate-50 py-24 border-y border-slate-200">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+          <FadeIn className="text-center mb-16 max-w-2xl mx-auto">
+            <div className="text-[11px] uppercase tracking-[0.25em] text-royal font-semibold mb-3">
+              Platform capabilities
+            </div>
+            <h2 className="font-display text-3xl md:text-5xl font-bold text-navy tracking-tight">
+              Everything you need to <span className="text-royal">run school payments</span> at scale
+            </h2>
+            <p className="mt-4 text-slate-600 text-lg">
+              A complete fintech stack, purpose-built for African education.
+            </p>
+          </FadeIn>
+
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-5">
+            {[
+              {
+                icon: Zap,
+                title: 'Payment verification',
+                body: 'Sub-second verification with every provider. Replay-protected by UNIQUE(school, provider, tx_id) — the same receipt cannot credit a student twice.',
+                accent: 'bg-royal/10 text-royal group-hover:bg-royal group-hover:text-white'
+              },
+              {
+                icon: CreditCard,
+                title: 'Multi-provider support',
+                body: 'MTN, Orange, Airtel through one unified API. Add a new network with a single credential swap — no re-wiring your app.',
+                accent: 'bg-gold/15 text-gold-600 group-hover:bg-gold group-hover:text-navy'
+              },
+              {
+                icon: Activity,
+                title: 'Real-time dashboards',
+                body: 'Live revenue by provider, pending transactions, reconciliation lag and student balances — updated the moment each payment verifies.',
+                accent: 'bg-royal/10 text-royal group-hover:bg-royal group-hover:text-white'
+              },
+              {
+                icon: Webhook,
+                title: 'Webhooks & API',
+                body: 'HMAC-verified inbound webhooks, a REST API for your own school website, and a drop-in widget.js for sites with no backend.',
+                accent: 'bg-gold/15 text-gold-600 group-hover:bg-gold group-hover:text-navy'
+              },
+              {
+                icon: Lock,
+                title: 'Security & encryption',
+                body: 'AES-256-GCM for provider credentials at rest, bcrypt for passwords, SHA-256 hashed API keys, TLS everywhere. Rotate keys in one click.',
+                accent: 'bg-royal/10 text-royal group-hover:bg-royal group-hover:text-white'
+              },
+              {
+                icon: Layers,
+                title: 'Multi-tenant isolation',
+                body: 'Every query scoped by school_id. Students, transactions, settings, API keys — nothing crosses a tenant boundary, ever.',
+                accent: 'bg-gold/15 text-gold-600 group-hover:bg-gold group-hover:text-navy'
+              }
+            ].map((f, i) => (
+              <FadeIn key={f.title} delay={i * 0.05}>
+                <div className="group bg-white rounded-2xl border border-slate-200 p-7 h-full hover:shadow-xl hover:shadow-navy/10 hover:-translate-y-1 transition-all duration-300">
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center mb-5 transition-colors ${f.accent}`}>
+                    <f.icon className="w-6 h-6" />
+                  </div>
+                  <h3 className="font-display text-lg font-bold text-navy mb-2">{f.title}</h3>
+                  <p className="text-sm text-slate-600 leading-relaxed">{f.body}</p>
+                </div>
+              </FadeIn>
+            ))}
+          </div>
+
+          <FadeIn className="text-center mt-12">
+            <Button asChild variant="outline" className="border-navy text-navy hover:bg-navy hover:text-white">
+              <Link to="/features">See the full feature list <ArrowRight className="w-4 h-4 ml-1.5" /></Link>
+            </Button>
+          </FadeIn>
+        </div>
+      </section>
+
       {/* Testimonials */}
       <section className="bg-slate-50 py-20 border-y border-slate-100">
         <div className="max-w-7xl mx-auto px-6">
