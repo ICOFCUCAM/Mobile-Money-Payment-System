@@ -18,6 +18,7 @@ import Pricing from "./pages/site/Pricing";
 import About from "./pages/site/About";
 import Developers from "./pages/site/Developers";
 import Pay from "./pages/site/Pay";
+import Subscribe from "./pages/Subscribe";
 
 const queryClient = new QueryClient();
 
@@ -56,6 +57,8 @@ const App = () => (
             <Routes>
               {/* Hosted pay page works for both auth and anon — public UX */}
               <Route path="/pay" element={<Pay />} />
+              {/* Billing / subscribe — requires auth, pure page (no dashboard chrome) */}
+              <Route path="/billing/subscribe" element={<Subscribe />} />
               {/* Password reset flows always render */}
               <Route path="/forgot-password" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />

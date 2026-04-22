@@ -11,6 +11,7 @@ import {
   Users, CreditCard, DollarSign, Clock,
   ArrowUpRight, CheckCircle2, Zap
 } from 'lucide-react';
+import WalletCard from '@/components/dashboard/WalletCard';
 
 interface Props { setPage: (p: any) => void; }
 
@@ -70,6 +71,10 @@ const Overview: React.FC<Props> = ({ setPage }) => {
           </Button>
         )}
       </div>
+
+      {/* Wallet + subscription snapshot — shown above the stats row so
+           admins see balance & subscription status immediately. */}
+      <WalletCard />
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {metrics.map((m) => (

@@ -240,6 +240,61 @@ export const Api = {
 
   // Health
   status: () => request<{ ok: boolean; db?: string }>('GET', '/_status'),
+
+  // Billing — Phase 1: schools pay us via MoMo to a corporate account.
+  // The permanent `billing_ref` code (e.g. SPY-G7K4M) is what the school
+  // types into the MoMo memo; everything crediting/subscription-extending
+  // happens server-side via the webhook.
+  billingCatalog: () =>
+    request<{ plans: Record<string, { monthly_cents: number; yearly_cents: number }> }>(
+      'GET', '/billing/catalog'
+    ),
+  createBillingIntent: (body: {
+    intent_type?: 'subscription' | 'wallet_topup';
+    plan?: 'basic' | 'pro' | 'enterprise';
+    billing_period?: 'monthly' | 'yearly';
+    amount_cents?: number;
+    local_amount?: number;
+    local_currency?: string;
+  }) =>
+    request<{
+      intent: {
+        id: string;
+        reference: string;
+        amount_cents: number;
+        local_amount: number | null;
+        local_currency: string | null;
+        expires_at: string;
+        status: string;
+        intent_type: string;
+        plan: string | null;
+        billing_period: string | null;
+      }
+    }>('POST', '/billing/intents', body),
+  getWallet: () =>
+    request<{
+      wallet: {
+        billing_ref: string;
+        balance_cents: number;
+        currency: string;
+        subscription: { plan: string; status: string; expires_at: string | null };
+        custom_price_cents: number | null;
+        transactions: Array<{
+          id: string;
+          kind: string;
+          amount_cents: number;
+          balance_after: number;
+          currency: string;
+          billing_intent_id: string | null;
+          memo: string | null;
+          created_at: string;
+        }>;
+      };
+    }>('GET', '/billing/wallet'),
+  adminBillingOverride: (body: { school_id: string; custom_price_cents: number | null; reason?: string }) =>
+    request<{ ok: true; id: string; custom_price_cents: number | null }>(
+      'POST', '/billing/admin/override', body
+    ),
 };
 
 // Legacy compatibility: old dashboard code may still `import { Api } from '@/lib/api'`
