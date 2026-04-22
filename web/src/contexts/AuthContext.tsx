@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Api, getToken, setToken } from '@/lib/api';
+import { setUser as setSentryUser } from '@/lib/sentry';
 
 /**
  * Backend fields are renamed on the way in so existing dashboard pages that
@@ -106,6 +107,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   useEffect(() => { (async () => { await refresh(); setLoading(false); })(); }, []);
+
+  // Tag Sentry with the current user/school so captured errors include them.
+  // No-op when Sentry is disabled.
+  useEffect(() => {
+    if (user) {
+      setSentryUser({ id: user.id, email: user.email, school_id: user.school_id });
+    } else {
+      setSentryUser(null);
+    }
+  }, [user]);
 
   const login = async (email: string, password: string, schoolSlug?: string, totp?: string) => {
     try {

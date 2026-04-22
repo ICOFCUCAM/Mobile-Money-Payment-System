@@ -8,8 +8,13 @@ const cookieParser = require('cookie-parser');
 
 const config = require('./config');
 const logger = require('./core/logger');
+const sentry = require('./core/sentry');
 const { apiLimiter } = require('./middleware/rateLimiter');
 const { notFound, errorHandler } = require('./middleware/errorHandler');
+
+// Boot Sentry eagerly so the very first exception is captured. No-op if
+// SENTRY_DSN is unset.
+sentry.init();
 
 const schoolsRoutes = require('./modules/schools/schools.routes');
 const authRoutes = require('./modules/auth/auth.routes');
@@ -93,6 +98,9 @@ app.use('/webhooks', webhooksRoutes);
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
 app.use(notFound);
+// Sentry first so exceptions are captured with full context, then our
+// JSON-formatted error handler renders the response.
+app.use(sentry.expressErrorHandler);
 app.use(errorHandler);
 
 module.exports = app;

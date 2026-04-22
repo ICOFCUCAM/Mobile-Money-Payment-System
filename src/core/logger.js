@@ -33,8 +33,10 @@ function mergeArgs(args) {
   const msgParts = [];
   const extra = {};
   let err;
+  let rawErr;
   for (const a of args) {
     if (a instanceof Error) {
+      rawErr = a;
       err = { name: a.name, message: a.message, stack: a.stack };
       msgParts.push(a.message);
     } else if (a && typeof a === 'object') {
@@ -45,17 +47,35 @@ function mergeArgs(args) {
   }
   const out = { msg: msgParts.join(' ') || undefined, ...extra };
   if (err) out.err = err;
+  if (rawErr) out._rawErr = rawErr;
   return out;
 }
 
 function emit(level, args) {
   const ctx = ctxStore.getStore() || {};
+  const merged = mergeArgs(args);
+  const rawErr = merged._rawErr;
+  delete merged._rawErr;
   const line = {
     ts: new Date().toISOString(),
     level,
     ...ctx,
-    ...mergeArgs(args)
+    ...merged
   };
+
+  // Forward real exceptions to Sentry with the request context already on
+  // AsyncLocalStorage. Lazy-require avoids a circular import with sentry.js.
+  if (level === 'ERROR' && rawErr) {
+    try {
+      require('./sentry').captureException(rawErr, {
+        trace_id: ctx.trace_id,
+        school_id: ctx.school_id,
+        user_id: ctx.user_id,
+        path: ctx.path,
+        action: ctx.action
+      });
+    } catch (_) { /* telemetry must never break logging */ }
+  }
 
   if (PRETTY) {
     // Dev: one-line readable.
