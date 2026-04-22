@@ -21,13 +21,45 @@ function generateApiKey() {
  * Register a new tenant (school) + its first admin user.
  * Returns the plaintext API key once — the caller must persist it.
  */
+/**
+ * Valid billing models + license tiers. Keep these in sync with the
+ * CHECK constraints we'd add if this were fresh schema (we use a free
+ * TEXT column for backward-compat — validation is in code).
+ */
+const VALID_BILLING_MODELS = new Set(['prepaid', 'postpaid', 'license']);
+const VALID_LICENSE_TIERS  = new Set(['1', '2', '3-5', '5-10', '10p']);
+
 async function registerSchool(payload, ip) {
   requireFields(payload, ['name', 'slug', 'email', 'password', 'adminName']);
   assertSlug(payload.slug);
   assertEmail(payload.email);
   if (payload.password.length < 8) throw new ValidationError('Password must be at least 8 characters');
 
-  const plan = payload.plan && getPlan(payload.plan) ? payload.plan : 'basic';
+  // Resolve billing choice. Three inputs (back-compat shapes):
+  //   billingModel: 'prepaid' | 'postpaid' | 'license'      (new)
+  //   plan:         'basic' | 'pro' | 'enterprise'          (postpaid sub-plan)
+  //   licenseTier:  '1' | '2' | '3-5' | '5-10' | '10p'      (license sub-tier)
+  // Falling back to the old `plan`-only API defaults to postpaid.
+  const billingModel = payload.billingModel && VALID_BILLING_MODELS.has(payload.billingModel)
+    ? payload.billingModel
+    : 'postpaid';
+
+  let plan = 'basic';
+  let licenseTier = null;
+  if (billingModel === 'postpaid') {
+    plan = payload.plan && getPlan(payload.plan) ? payload.plan : 'basic';
+  } else if (billingModel === 'prepaid') {
+    plan = 'prepaid';
+  } else if (billingModel === 'license') {
+    licenseTier = payload.licenseTier && VALID_LICENSE_TIERS.has(payload.licenseTier)
+      ? payload.licenseTier
+      : '1';
+    // 10p requires sales contact — block self-serve signup at that tier.
+    if (licenseTier === '10p') {
+      throw new ValidationError('10+ school licenses require a sales conversation — please contact us.');
+    }
+    plan = `license:${licenseTier}`;
+  }
 
   const existing = await db.query(
     'SELECT id FROM schools WHERE slug = $1 OR email = $2',
@@ -42,8 +74,10 @@ async function registerSchool(payload, ip) {
 
   await db.withTransaction(async (client) => {
     await client.query(
-      `INSERT INTO schools (id, name, slug, email, phone, api_key_hash, api_key_prefix, subscription_plan)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      `INSERT INTO schools
+        (id, name, slug, email, phone, api_key_hash, api_key_prefix,
+         subscription_plan, billing_model, license_tier)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
       [
         schoolId,
         payload.name,
@@ -52,7 +86,9 @@ async function registerSchool(payload, ip) {
         payload.phone || null,
         apiKey.hash,
         apiKey.prefix,
-        plan
+        plan,
+        billingModel,
+        licenseTier
       ]
     );
     await client.query(
@@ -66,7 +102,14 @@ async function registerSchool(payload, ip) {
     );
   });
 
-  writeAudit({ schoolId, userId, action: 'school.register', entity: 'school', entityId: schoolId, ip });
+  writeAudit({
+    schoolId, userId,
+    action: 'school.register',
+    entity: 'school',
+    entityId: schoolId,
+    metadata: { billingModel, plan, licenseTier },
+    ip
+  });
 
   return { school: await getSchool(schoolId), apiKey: apiKey.raw };
 }

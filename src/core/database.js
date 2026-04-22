@@ -138,6 +138,12 @@ ALTER TABLE schools ADD COLUMN IF NOT EXISTS wallet_balance_cents BIGINT NOT NUL
 ALTER TABLE schools ADD COLUMN IF NOT EXISTS billing_currency    TEXT NOT NULL DEFAULT 'USD';
 ALTER TABLE schools ADD COLUMN IF NOT EXISTS custom_price_cents  BIGINT;   -- admin-set override for subscription price
 ALTER TABLE schools ADD COLUMN IF NOT EXISTS is_billing_tenant   BOOLEAN NOT NULL DEFAULT FALSE;
+-- Billing model picked at signup:
+--   postpaid → schools.subscription_plan holds basic|pro|enterprise
+--   prepaid  → per-student/year pricing; subscription_plan stays 'prepaid'
+--   license  → one-off purchase; license_tier holds 1|2|3-5|5-10|10p
+ALTER TABLE schools ADD COLUMN IF NOT EXISTS billing_model       TEXT NOT NULL DEFAULT 'postpaid';
+ALTER TABLE schools ADD COLUMN IF NOT EXISTS license_tier        TEXT;
 CREATE UNIQUE INDEX IF NOT EXISTS idx_schools_billing_ref ON schools(billing_ref)
   WHERE billing_ref IS NOT NULL;
 

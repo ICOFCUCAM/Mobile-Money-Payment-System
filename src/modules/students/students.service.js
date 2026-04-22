@@ -4,7 +4,7 @@ const { v4: uuid } = require('uuid');
 const { db, writeAudit } = require('../../core/database');
 const { ConflictError, NotFoundError, PlanRestrictionError } = require('../../core/errors');
 const { requireFields } = require('../../utils/validators');
-const { getPlan } = require('../subscriptions/plans');
+const { getPlan, planForSchool } = require('../subscriptions/plans');
 
 async function countStudents(schoolId) {
   const res = await db.query('SELECT COUNT(*)::int AS c FROM students WHERE school_id = $1', [schoolId]);
@@ -12,7 +12,7 @@ async function countStudents(schoolId) {
 }
 
 async function enforceStudentQuota(school) {
-  const plan = getPlan(school.subscription_plan) || getPlan('basic');
+  const plan = planForSchool(school) || getPlan('basic');
   const limit = plan.features.maxStudents;
   if (limit === Infinity) return;
   const current = await countStudents(school.id);

@@ -173,7 +173,10 @@ export const Api = {
   // Schools
   register: (body: {
     name: string; slug: string; email: string; phone?: string;
-    adminName: string; password: string; plan?: string;
+    adminName: string; password: string;
+    plan?: string;
+    billingModel?: 'prepaid' | 'postpaid' | 'license';
+    licenseTier?: string;
   }) => request<{ school: BackendSchool; apiKey: string }>('POST', '/schools/register', body),
   getSchool: () => request<{ school: BackendSchool }>('GET', '/schools/me'),
   updateSchool: (body: { name?: string; phone?: string; is_active?: boolean }) =>

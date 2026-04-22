@@ -43,7 +43,12 @@ interface RegisterData {
   phone: string;
   fullName: string;
   password: string;
+  /** Legacy postpaid sub-plan: 'basic' | 'pro' | 'enterprise' */
   plan: string;
+  /** New billing model chosen in the 2-step wizard. Defaults to postpaid for backward-compat. */
+  billingModel?: 'prepaid' | 'postpaid' | 'license';
+  /** License tier when billingModel === 'license' ('1' | '2' | '3-5' | '5-10') */
+  licenseTier?: string;
 }
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
@@ -123,8 +128,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         phone: data.phone,
         adminName: data.fullName,
         password: data.password,
-        plan: data.plan
-      });
+        plan: data.plan,
+        billingModel: data.billingModel,
+        licenseTier: data.licenseTier
+      } as any);
       // Auto-login after registration so the user goes straight to the dashboard.
       const loginRes = await Api.login({ email: data.email, password: data.password });
       setToken(loginRes.token);
