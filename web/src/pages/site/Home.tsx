@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import { SiteLayoutWithAuthCtx, useAuthDialog } from '@/components/site/SiteLayout';
 import { FadeIn, AnimatedNumber } from '@/components/site/motion';
+import { AfricaMap } from '@/components/site/AfricaMap';
+import { LiveTicker } from '@/components/site/LiveTicker';
 
 const HomeInner: React.FC = () => {
   const { setMode } = useAuthDialog();
@@ -29,40 +31,32 @@ const HomeInner: React.FC = () => {
 
   return (
     <>
-      {/* Hero */}
-      <section className="relative bg-navy">
-        {/*
-         * Clean photograph of African children going to school. The image is not
-         * blurred or washed. A narrow left-side navy gradient gives the headline
-         * enough contrast without dimming the rest of the photograph.
-         */}
-        <img
-          src="https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=2000&q=85"
-          alt="African schoolchildren on their way to class"
-          className="absolute inset-0 w-full h-full object-cover"
-          onError={(e) => { (e.currentTarget.style.display = 'none'); }}
-        />
-        {/* Left-biased navy vignette — keeps the text edge readable while the
-            right-side photo stays clean under the dashboard widget. */}
-        <div className="absolute inset-0 bg-gradient-to-r from-navy/80 via-navy/30 to-transparent pointer-events-none" />
+      {/* Hero — navy with Africa map on the left, dashboard widget on the right,
+           live transactions ticker underneath. No photograph; pure SVG + CSS so
+           nothing can fail to load. */}
+      <section className="relative bg-navy text-white overflow-hidden pb-0">
+        {/* Soft ambient glows + top gold hairline */}
+        <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-gold/50 to-transparent" />
+        <div className="absolute -top-40 -left-20 w-[620px] h-[620px] rounded-full bg-royal/15 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-40 -right-20 w-[620px] h-[620px] rounded-full bg-gold/8 blur-3xl pointer-events-none" />
 
-        <div className="relative max-w-7xl mx-auto px-6 lg:px-8 py-24 lg:py-32 grid lg:grid-cols-[1.15fr_1fr] gap-12 items-center">
-          {/* Headline — transparent, sits directly on the photo */}
-          <div className="text-white [text-shadow:0_2px_16px_rgba(11,28,61,0.65)]">
+        <div className="relative max-w-7xl mx-auto px-6 lg:px-8 pt-20 lg:pt-24">
+          {/* Row 1 — headline block, left-aligned */}
+          <div className="max-w-3xl">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gold/15 border border-gold/40 text-gold text-[11px] font-semibold uppercase tracking-widest mb-6">
-              <span className="w-1.5 h-1.5 rounded-full bg-gold animate-pulse" /> Mobile-money native
+              <span className="w-1.5 h-1.5 rounded-full bg-gold animate-pulse" /> Live across 12 countries
             </div>
             <h1 className="font-display text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight leading-[1.04]">
               School Payments.<br />
               Built for <span className="text-royal-400">Africa</span>.<br />
               <span className="text-gold">Powered by Mobile Money.</span>
             </h1>
-            <p className="mt-6 text-lg text-slate-200 leading-relaxed max-w-xl">
+            <p className="mt-6 text-lg text-slate-300 leading-relaxed max-w-2xl">
               SchoolPay is the payment infrastructure for African schools — one API that integrates
               MTN MoMo, Orange Money and Airtel Money, verifies every receipt, credits the student,
               and hands your bursar a real-time audit trail.
             </p>
-            <div className="mt-8 flex flex-wrap gap-3 [text-shadow:none]">
+            <div className="mt-8 flex flex-wrap gap-3">
               <Button
                 size="lg"
                 className="bg-royal hover:bg-royal-700 text-white font-semibold shadow-lg shadow-royal/40"
@@ -79,12 +73,25 @@ const HomeInner: React.FC = () => {
                 <Link to="/developers">View Documentation</Link>
               </Button>
             </div>
-            <div className="mt-8 flex items-center gap-6 text-sm text-slate-200 flex-wrap">
+            <div className="mt-6 flex items-center gap-6 text-sm text-slate-300 flex-wrap">
               <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-gold" /> 14-day free trial</span>
               <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-gold" /> No credit card</span>
               <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-gold" /> Setup in minutes</span>
             </div>
           </div>
+
+          {/* Row 2 — Africa map on the left, dashboard widget on the right */}
+          <div className="mt-14 grid lg:grid-cols-[1.1fr_1fr] gap-10 items-center">
+            <FadeIn className="relative">
+              <AfricaMap className="w-full h-auto" />
+              {/* Overlay metric chip — "3 networks · 12 countries" */}
+              <div className="absolute top-3 left-3 flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm text-[11px]">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-white/90 font-semibold">3 networks</span>
+                <span className="text-white/40">·</span>
+                <span className="text-gold font-semibold">12 countries</span>
+              </div>
+            </FadeIn>
 
           {/* Rotating dashboard widget — white card, as before. Sits on top of the
               clean photograph on the right. */}
@@ -251,6 +258,22 @@ const HomeInner: React.FC = () => {
               </AnimatePresence>
             </div>
           </Card>
+          </div>
+        </div>
+
+        {/* Row 3 — live transactions ticker spanning full-width of the hero */}
+        <div className="relative mt-16 border-t border-white/10 bg-navy-950/50">
+          <div className="max-w-7xl mx-auto px-6 lg:px-8 py-2">
+            <div className="flex items-center gap-4 py-1">
+              <div className="shrink-0 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/15 border border-emerald-400/30 text-emerald-300 text-[10px] font-bold uppercase tracking-widest">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Live
+              </div>
+              <div className="flex-1 min-w-0">
+                <LiveTicker />
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
