@@ -772,53 +772,121 @@ const HomeInner: React.FC = () => {
       </section>
 
       {/* Testimonials */}
-      <section className="bg-slate-50 py-20 border-y border-slate-100">
-        <div className="max-w-7xl mx-auto px-6">
-          <FadeIn className="text-center mb-10">
-            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 mb-3">What schools say</Badge>
-            <h2 className="font-display text-3xl md:text-4xl font-bold">Bursars love it. So do parents.</h2>
+      <section className="bg-white py-24">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+          <FadeIn className="text-center mb-14 max-w-2xl mx-auto">
+            <div className="text-[11px] uppercase tracking-[0.25em] text-royal font-semibold mb-3">What schools say</div>
+            <h2 className="font-display text-3xl md:text-5xl font-bold text-navy tracking-tight">
+              Bursars love it. <span className="text-royal">So do parents.</span>
+            </h2>
           </FadeIn>
-          <div className="grid md:grid-cols-3 gap-5">
+          <div className="grid md:grid-cols-3 gap-6">
             {[
-              { name: 'Amadou Diallo', role: 'Finance Director', school: 'Riverbend Academy', initial: 'A', grad: 'from-blue-500 to-indigo-600',
+              { name: 'Amadou Diallo', role: 'Finance Director', school: 'Riverbend Academy', initial: 'A',
                 quote: 'We used to chase parents for MoMo receipts and type them into Excel. With SchoolPay a payment is verified and the student credited in under two seconds.' },
-              { name: 'Sarah Okonkwo', role: 'Head Bursar', school: 'Greenwood High', initial: 'S', grad: 'from-emerald-500 to-teal-600',
+              { name: 'Sarah Okonkwo', role: 'Head Bursar', school: 'Greenwood High', initial: 'S',
                 quote: 'The audit log alone justified the subscription. Every reversal, every provider webhook, every student edit is on one timeline we can hand to the auditors.' },
-              { name: 'Pierre Mbappe', role: 'School Administrator', school: 'Lycée Saint-Joseph', initial: 'P', grad: 'from-purple-500 to-pink-600',
+              { name: 'Pierre Mbappe', role: 'School Administrator', school: 'Lycée Saint-Joseph', initial: 'P',
                 quote: 'Setup took an afternoon. We configured MTN and Orange, pointed the webhooks, and parents started paying the same day.' }
             ].map((t, i) => (
               <FadeIn key={t.name} delay={i * 0.08}>
-                <Card className="p-6 h-full border-slate-100 bg-white relative hover:shadow-md transition-shadow">
-                  <Quote className="absolute top-4 right-4 w-6 h-6 text-blue-100" />
-                  <p className="text-sm text-slate-700 leading-relaxed">&ldquo;{t.quote}&rdquo;</p>
-                  <div className="mt-5 pt-4 border-t border-slate-100 flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-full bg-gradient-to-br ${t.grad} flex items-center justify-center text-white font-bold`}>
+                <div className="relative bg-white rounded-2xl border border-slate-200 p-7 h-full hover:shadow-xl hover:shadow-navy/10 hover:-translate-y-1 transition-all duration-300">
+                  <Quote className="absolute top-5 right-5 w-7 h-7 text-gold/60" />
+                  {/* 5-star row */}
+                  <div className="flex gap-0.5 mb-4">
+                    {[0,1,2,3,4].map((i) => (
+                      <svg key={i} viewBox="0 0 20 20" className="w-4 h-4 fill-gold"><path d="M10 1l2.5 6 6.5.5-5 4.5 1.5 6.5L10 15l-5.5 3.5L6 12 1 7.5l6.5-.5z"/></svg>
+                    ))}
+                  </div>
+                  <p className="text-[15px] text-slate-700 leading-relaxed">&ldquo;{t.quote}&rdquo;</p>
+                  <div className="mt-6 pt-5 border-t border-slate-100 flex items-center gap-3">
+                    <div className="w-11 h-11 rounded-full bg-gradient-to-br from-navy to-royal flex items-center justify-center text-white font-display font-bold shadow-md">
                       {t.initial}
                     </div>
                     <div>
-                      <div className="font-semibold text-sm">{t.name}</div>
+                      <div className="font-semibold text-sm text-navy">{t.name}</div>
                       <div className="text-xs text-slate-500">{t.role} · {t.school}</div>
                     </div>
                   </div>
-                </Card>
+                </div>
               </FadeIn>
             ))}
           </div>
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="bg-gradient-to-br from-blue-600 to-indigo-700 text-white py-16">
-        <div className="max-w-4xl mx-auto px-6 text-center">
-          <h2 className="font-display text-3xl md:text-4xl font-bold">Ready to modernize your school payments?</h2>
-          <p className="mt-3 text-blue-100">Join 500+ schools across Africa already using SchoolPay.</p>
-          <div className="mt-8 flex items-center justify-center gap-3 flex-wrap">
-            <Button size="lg" className="bg-white text-blue-700 hover:bg-blue-50" onClick={() => setMode('register')}>
-              Start Your Free Trial <ArrowRight className="w-4 h-4 ml-1" />
+      {/* Pricing preview — teaser */}
+      <section className="bg-slate-50 py-24 border-y border-slate-200">
+        <div className="max-w-7xl mx-auto px-6 lg:px-8">
+          <FadeIn className="text-center mb-12 max-w-2xl mx-auto">
+            <div className="text-[11px] uppercase tracking-[0.25em] text-royal font-semibold mb-3">Simple pricing</div>
+            <h2 className="font-display text-3xl md:text-5xl font-bold text-navy tracking-tight">
+              Start free. Pay only when <span className="text-royal">your school grows</span>.
+            </h2>
+            <p className="mt-4 text-slate-600 text-lg">
+              Three plans, a 14-day free trial on each, and no hidden per-transaction fees.
+            </p>
+          </FadeIn>
+
+          <div className="grid md:grid-cols-3 gap-5 max-w-5xl mx-auto">
+            {[
+              { name: 'Basic',      price: 10,  tag: 'Up to 100 students',    highlight: false },
+              { name: 'Pro',        price: 25,  tag: 'Up to 1,000 students',  highlight: true  },
+              { name: 'Enterprise', price: 99,  tag: 'Unlimited',             highlight: false }
+            ].map((p) => (
+              <div
+                key={p.name}
+                className={`rounded-2xl p-6 border transition-all ${
+                  p.highlight
+                    ? 'bg-navy text-white border-gold shadow-xl shadow-navy/30 md:scale-105'
+                    : 'bg-white text-navy border-slate-200 hover:shadow-lg'
+                }`}
+              >
+                <div className={`text-xs font-bold uppercase tracking-widest ${p.highlight ? 'text-gold' : 'text-royal'}`}>{p.name}</div>
+                <div className="mt-3 flex items-baseline gap-1">
+                  <span className="font-display text-4xl font-bold">${p.price}</span>
+                  <span className={`text-sm ${p.highlight ? 'text-slate-400' : 'text-slate-500'}`}>/month</span>
+                </div>
+                <div className={`mt-2 text-sm ${p.highlight ? 'text-slate-300' : 'text-slate-600'}`}>{p.tag}</div>
+              </div>
+            ))}
+          </div>
+
+          <FadeIn className="text-center mt-10">
+            <Button asChild size="lg" className="bg-navy hover:bg-navy-800 text-white">
+              <Link to="/pricing">Compare all plans & models <ArrowRight className="w-4 h-4 ml-1.5" /></Link>
             </Button>
-            <Button asChild size="lg" variant="outline" className="border-white text-white bg-transparent hover:bg-white/10">
-              <Link to="/developers">Developer docs</Link>
+          </FadeIn>
+        </div>
+      </section>
+
+      {/* Final CTA */}
+      <section className="relative bg-navy text-white py-24 overflow-hidden">
+        <div className="absolute top-0 inset-x-0 h-px bg-gradient-to-r from-transparent via-gold/60 to-transparent" />
+        <div className="absolute -top-24 -right-24 w-[420px] h-[420px] rounded-full bg-royal/20 blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-24 -left-24 w-[420px] h-[420px] rounded-full bg-gold/10 blur-3xl pointer-events-none" />
+        <div className="relative max-w-4xl mx-auto px-6 lg:px-8 text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-gold/15 border border-gold/40 text-gold text-[11px] font-semibold uppercase tracking-widest mb-6">
+            <Sparkles className="w-3 h-3" /> Ready when you are
+          </div>
+          <h2 className="font-display text-3xl md:text-5xl font-bold tracking-tight">
+            Modernize your school payments <span className="text-gold">this afternoon</span>.
+          </h2>
+          <p className="mt-4 text-slate-300 text-lg">
+            Join 500+ schools across Africa already reconciling mobile-money payments in real time.
+          </p>
+          <div className="mt-10 flex items-center justify-center gap-3 flex-wrap">
+            <Button size="lg" className="bg-gold hover:bg-gold-600 text-navy font-semibold" onClick={() => setMode('register')}>
+              Start Your Free Trial <ArrowRight className="w-4 h-4 ml-1.5" />
             </Button>
+            <Button asChild size="lg" variant="outline" className="border-white/30 text-white bg-white/5 hover:bg-white/15 hover:text-white">
+              <Link to="/developers">Read the docs</Link>
+            </Button>
+          </div>
+          <div className="mt-8 flex items-center justify-center gap-6 text-sm text-slate-400 flex-wrap">
+            <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-gold" /> 14-day free trial</span>
+            <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-gold" /> No credit card</span>
+            <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-gold" /> Cancel anytime</span>
           </div>
         </div>
       </section>
