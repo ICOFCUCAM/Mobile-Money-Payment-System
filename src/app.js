@@ -31,9 +31,32 @@ const app = express();
 app.set('trust proxy', 1);
 app.disable('x-powered-by');
 
+// Content-Security-Policy. Tight defaults: only same-origin scripts/styles,
+// no inline script (the legacy /public dashboard uses addEventListener +
+// innerHTML template rendering, never inline handlers, so this is safe).
+// Data-URIs allowed for img-src so the QR code the 2FA flow generates
+// renders. object-src 'none' and frame-ancestors 'none' block plugin
+// content and clickjacking respectively.
 app.use(
   helmet({
-    contentSecurityPolicy: false // Allow inline scripts in the static dashboard
+    contentSecurityPolicy: {
+      useDefaults: true,
+      directives: {
+        'default-src':     ["'self'"],
+        'script-src':      ["'self'"],
+        'script-src-attr': ["'none'"],
+        'style-src':       ["'self'", "'unsafe-inline'"],
+        'img-src':         ["'self'", 'data:'],
+        'connect-src':     ["'self'"],
+        'font-src':        ["'self'", 'data:'],
+        'object-src':      ["'none'"],
+        'base-uri':        ["'self'"],
+        'form-action':     ["'self'"],
+        'frame-ancestors': ["'none'"]
+      }
+    },
+    crossOriginEmbedderPolicy: false, // don't force COEP on consumers
+    crossOriginResourcePolicy: { policy: 'cross-origin' } // API is cross-origin-fetched by the SPA
   })
 );
 app.use(cors({ origin: true, credentials: true }));
