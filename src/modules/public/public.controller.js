@@ -18,15 +18,28 @@ const { ValidationError, NotFoundError } = require('../../core/errors');
 async function verifyPayment(req, res) {
   const body = req.body || {};
 
-  // Accept both snake_case (spec) and camelCase (internal).
-  const schoolId      = body.school_id      || body.schoolId;
-  const studentCode   = body.student_id     || body.studentId    || body.studentCode;
-  const externalId    = body.transaction_id || body.transactionId || body.externalId;
-  const provider      = body.provider;
+  // Accept both snake_case (spec) and camelCase (internal). Strings are
+  // trimmed + length-capped so a pathological caller can't wedge us with
+  // a multi-MB transaction_id or sneak leading whitespace past the
+  // (school, provider, external_id) unique dedupe.
+  const str = (v, max = 128) => {
+    if (v == null) return undefined;
+    const s = String(v).trim();
+    if (s.length === 0) return undefined;
+    if (s.length > max) throw new ValidationError(`field exceeds ${max} chars`);
+    return s;
+  };
+  const schoolId    = str(body.school_id      || body.schoolId);
+  const studentCode = str(body.student_id     || body.studentId    || body.studentCode, 64);
+  const externalId  = str(body.transaction_id || body.transactionId || body.externalId, 128);
+  const provider    = str(body.provider, 24);
 
   if (!studentCode) throw new ValidationError('student_id is required');
   if (!externalId)  throw new ValidationError('transaction_id is required');
   if (!provider)    throw new ValidationError('provider is required');
+  // Normalise provider to upper-case so MTN vs mtn vs Mtn don't create
+  // three different transaction rows that dodge the UNIQUE dedupe.
+  const providerUC = provider.toUpperCase();
 
   // The Bearer key already scoped req.school — if the body's school_id doesn't
   // match, reject loudly so a leaked key can't be used against a different school
@@ -38,7 +51,7 @@ async function verifyPayment(req, res) {
   try {
     const transaction = await paymentsService.submitTransaction(
       req.school,
-      { studentCode, externalId, provider },
+      { studentCode, externalId, provider: providerUC },
       null,
       req.ip
     );
