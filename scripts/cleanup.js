@@ -18,16 +18,20 @@ const { runCleanup } = require('../src/core/cleanup');
 const { getPool } = require('../src/core/database');
 
 async function main() {
+  const dryRun = process.argv.includes('--dry-run') || process.argv.includes('-n');
   const pool = getPool();
-  const { duration_ms, totalDeleted, results } = await runCleanup(pool);
+  const summary = await runCleanup(pool, { dryRun });
 
-  console.log(`cleanup finished in ${duration_ms}ms — ${totalDeleted} rows deleted`);
-  for (const r of results) {
-    if (r.ok) console.log(`  ✓ ${r.name.padEnd(20)} ${r.deleted}`);
+  const total = dryRun ? summary.totalWouldDelete : summary.totalDeleted;
+  const verb  = dryRun ? 'would delete' : 'deleted';
+  console.log(`cleanup finished in ${summary.duration_ms}ms — ${total} rows ${verb}`);
+  for (const r of summary.results) {
+    const n = r.deleted ?? r.wouldDelete ?? 0;
+    if (r.ok) console.log(`  ${dryRun ? '·' : '✓'} ${r.name.padEnd(20)} ${n}`);
     else      console.log(`  ✗ ${r.name.padEnd(20)} ${r.error}`);
   }
 
-  const anyFailed = results.some((r) => !r.ok);
+  const anyFailed = summary.results.some((r) => !r.ok);
   process.exit(anyFailed ? 1 : 0);
 }
 

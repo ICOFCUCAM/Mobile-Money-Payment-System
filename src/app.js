@@ -145,7 +145,8 @@ app.all('/api/_cleanup', async (req, res, next) => {
     }
     const { getPool } = require('./core/database');
     const { runCleanup } = require('./core/cleanup');
-    const result = await runCleanup(getPool());
+    const dryRun = req.query.dry_run === '1' || req.query.dry_run === 'true';
+    const result = await runCleanup(getPool(), { dryRun });
     res.json({ ok: true, ...result });
   } catch (err) { next(err); }
 });

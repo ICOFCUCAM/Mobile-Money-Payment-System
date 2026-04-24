@@ -76,3 +76,25 @@ test('runCleanup SQL never deletes without a LIMIT', async () => {
     assert.match(q.sql, /LIMIT \$1/, `query missing LIMIT: ${q.sql}`);
   }
 });
+
+test('runCleanup dry-run issues COUNT queries, not DELETEs', async () => {
+  // Mock pool returns a fixed count per task.
+  const pool = {
+    _queries: [],
+    async query(sql) {
+      this._queries.push({ sql: sql.replace(/\s+/g, ' ').trim() });
+      if (/^DELETE /.test(sql)) throw new Error('dry-run should not DELETE');
+      // Fake COUNT for every table the dry-run probes.
+      return { rows: [{ n: 7 }] };
+    }
+  };
+
+  const result = await runCleanup(pool, { dryRun: true });
+  assert.equal(result.dryRun, true);
+  assert.equal(result.totalDeleted, 0);
+  assert.equal(result.totalWouldDelete, 7 * 5);
+  // All queries are SELECT COUNTs — never DELETE.
+  for (const q of pool._queries) {
+    assert.match(q.sql, /^SELECT COUNT/);
+  }
+});
