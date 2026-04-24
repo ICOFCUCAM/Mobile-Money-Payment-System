@@ -21,6 +21,13 @@ function buildPool() {
   const sslDisabled = /sslmode=disable/.test(connectionString);
   const ssl = sslDisabled ? false : { rejectUnauthorized: false };
 
+  // Statement and query timeouts protect against pathological slow queries.
+  // Vercel's lambda max duration is 15s; 10s here lets the handler still
+  // render a clean 500 with the pg-side error instead of dying as a 504.
+  // Override with DATABASE_STATEMENT_TIMEOUT_MS / DATABASE_QUERY_TIMEOUT_MS.
+  const statementTimeout = parseInt(process.env.DATABASE_STATEMENT_TIMEOUT_MS || '10000', 10);
+  const queryTimeout     = parseInt(process.env.DATABASE_QUERY_TIMEOUT_MS     || '10000', 10);
+
   return new Pool({
     host: url.hostname,
     port: url.port ? parseInt(url.port, 10) : 5432,
@@ -30,7 +37,9 @@ function buildPool() {
     ssl,
     max: parseInt(process.env.DATABASE_POOL_MAX || (config.isProd ? '5' : '10'), 10),
     idleTimeoutMillis: 30_000,
-    connectionTimeoutMillis: 10_000
+    connectionTimeoutMillis: 10_000,
+    statement_timeout: statementTimeout,
+    query_timeout: queryTimeout
   });
 }
 
