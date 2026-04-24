@@ -6,7 +6,7 @@ const { v4: uuid } = require('uuid');
 const { db, writeAudit } = require('../../core/database');
 const { signToken } = require('../../middleware/auth');
 const { AuthError, ConflictError, NotFoundError, ValidationError } = require('../../core/errors');
-const { assertEmail, assertEnum, requireFields } = require('../../utils/validators');
+const { assertEmail, assertEnum, requireFields, assertStrongPassword } = require('../../utils/validators');
 const config = require('../../config');
 const logger = require('../../core/logger');
 
@@ -75,7 +75,7 @@ async function createUser(schoolId, payload, actor, ip) {
   requireFields(payload, ['email', 'password', 'role', 'fullName']);
   assertEmail(payload.email);
   assertEnum(payload.role, ROLES, 'role');
-  if (payload.password.length < 8) throw new ValidationError('Password must be at least 8 characters');
+  assertStrongPassword(payload.password, { field: 'password' });
 
   const emailLc = payload.email.toLowerCase();
   const existing = await db.query(
@@ -198,7 +198,7 @@ async function requestPasswordReset({ email, schoolSlug }, ip) {
  */
 async function resetPassword({ token, newPassword }, ip) {
   requireFields({ token, newPassword }, ['token', 'newPassword']);
-  if (newPassword.length < 8) throw new ValidationError('Password must be at least 8 characters');
+  assertStrongPassword(newPassword, { field: 'newPassword' });
 
   const res = await db.query(
     `SELECT pr.*, u.school_id FROM password_resets pr
@@ -228,7 +228,7 @@ async function resetPassword({ token, newPassword }, ip) {
 
 async function changePassword(userId, { currentPassword, newPassword }, ip) {
   requireFields({ currentPassword, newPassword }, ['currentPassword', 'newPassword']);
-  if (newPassword.length < 8) throw new ValidationError('Password must be at least 8 characters');
+  assertStrongPassword(newPassword, { field: 'newPassword' });
 
   const res = await db.query('SELECT * FROM users WHERE id = $1', [userId]);
   const user = res.rows[0];

@@ -7,7 +7,7 @@ const { db, writeAudit } = require('../../core/database');
 const { encrypt } = require('../../core/encryption');
 const { hashApiKey } = require('../../middleware/auth');
 const { ConflictError, NotFoundError, ValidationError } = require('../../core/errors');
-const { assertEmail, assertSlug, requireFields } = require('../../utils/validators');
+const { assertEmail, assertSlug, requireFields, assertStrongPassword } = require('../../utils/validators');
 const { getPlan } = require('../subscriptions/plans');
 const config = require('../../config');
 const { REGISTRY } = require('../../providers/ProviderFactory');
@@ -33,7 +33,7 @@ async function registerSchool(payload, ip) {
   requireFields(payload, ['name', 'slug', 'email', 'password', 'adminName']);
   assertSlug(payload.slug);
   assertEmail(payload.email);
-  if (payload.password.length < 8) throw new ValidationError('Password must be at least 8 characters');
+  assertStrongPassword(payload.password, { field: 'password' });
 
   // Resolve billing choice. Three inputs (back-compat shapes):
   //   billingModel: 'prepaid' | 'postpaid' | 'license'      (new)
