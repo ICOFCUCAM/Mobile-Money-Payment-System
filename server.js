@@ -25,8 +25,16 @@ async function start() {
 
   process.on('SIGINT', () => shutdown('SIGINT'));
   process.on('SIGTERM', () => shutdown('SIGTERM'));
-  process.on('unhandledRejection', (err) => logger.error('UnhandledRejection', err));
-  process.on('uncaughtException', (err) => logger.error('UncaughtException', err));
+  const sentry = require('./src/core/sentry');
+  process.on('unhandledRejection', (reason) => {
+    const err = reason instanceof Error ? reason : new Error(String(reason));
+    try { sentry.captureException(err, { action: 'unhandledRejection' }); } catch (_) {}
+    logger.error('UnhandledRejection', err);
+  });
+  process.on('uncaughtException', (err) => {
+    try { sentry.captureException(err, { action: 'uncaughtException' }); } catch (_) {}
+    logger.error('UncaughtException', err);
+  });
 }
 
 start().catch((err) => {
