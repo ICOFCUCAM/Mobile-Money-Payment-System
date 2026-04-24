@@ -134,7 +134,15 @@ function requestLogger(req, res, next) {
       // time this fires — a throw here would surface as FUNCTION_INVOCATION_FAILED.
       res.on('finish', () => {
         try {
-          emit('INFO', [{ msg: 'request', status: res.statusCode, duration_ms: Date.now() - started }]);
+          const duration_ms = Date.now() - started;
+          // Slow-request warning: flip to WARN so `level:WARN` log queries
+          // find them without scanning every access line. Threshold is
+          // intentionally coarse; tune via SLOW_REQUEST_MS.
+          const slowMs = parseInt(process.env.SLOW_REQUEST_MS || '2000', 10);
+          const level = res.statusCode >= 500 ? 'ERROR'
+                      : duration_ms >= slowMs ? 'WARN'
+                      : 'INFO';
+          emit(level, [{ msg: 'request', status: res.statusCode, duration_ms }]);
         } catch (_) { /* swallow */ }
       });
       next();
