@@ -13,5 +13,6 @@
  */
 
 module.exports = [
-  require('./001_initial_schema')
+  require('./001_initial_schema'),
+  require('./002_token_version')
 ];

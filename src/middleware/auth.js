@@ -40,11 +40,18 @@ async function authJwt(req, _res, next) {
     const payload = verifyToken(token);
 
     const userRes = await db.query(
-      'SELECT id, school_id, email, role, is_active FROM users WHERE id = $1',
+      'SELECT id, school_id, email, role, is_active, token_version FROM users WHERE id = $1',
       [payload.sub]
     );
     const user = userRes.rows[0];
     if (!user || !user.is_active) throw new AuthError('User not found or disabled');
+    // Token version gate: bumped by changePassword / resetPassword so that
+    // previously-issued JWTs stop working. `tv` on the JWT, token_version
+    // on the user row. A missing/mismatched tv ⇒ this token was issued
+    // before the last credential change; refuse it.
+    if (Number(payload.tv || 0) !== Number(user.token_version || 0)) {
+      throw new AuthError('Session no longer valid — please sign in again');
+    }
 
     const schoolRes = await db.query('SELECT * FROM schools WHERE id = $1 AND is_active = TRUE', [user.school_id]);
     const school = schoolRes.rows[0];

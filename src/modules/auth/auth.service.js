@@ -62,7 +62,10 @@ async function login({ email, password, schoolSlug, totp }, ip) {
   await db.query('UPDATE users SET last_login_at = NOW() WHERE id = $1', [user.id]);
   writeAudit({ schoolId: school.id, userId: user.id, action: 'auth.login', ip });
 
-  const token = signToken({ sub: user.id, school_id: school.id, role: user.role });
+  const token = signToken({
+    sub: user.id, school_id: school.id, role: user.role,
+    tv: Number(user.token_version || 0)
+  });
   return {
     token,
     user: { id: user.id, email: user.email, role: user.role, fullName: user.full_name,
@@ -211,7 +214,12 @@ async function resetPassword({ token, newPassword }, ip) {
 
   const passwordHash = await bcrypt.hash(newPassword, config.security.bcryptRounds);
   await db.withTransaction(async (client) => {
-    await client.query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, row.user_id]);
+    // Bump token_version so any JWT that was issued before this reset is
+    // refused by authJwt on the next request.
+    await client.query(
+      'UPDATE users SET password_hash = $1, token_version = token_version + 1 WHERE id = $2',
+      [passwordHash, row.user_id]
+    );
     await client.query('UPDATE password_resets SET used_at = NOW() WHERE id = $1', [row.id]);
   });
 
@@ -238,7 +246,13 @@ async function changePassword(userId, { currentPassword, newPassword }, ip) {
   if (!ok) throw new AuthError('Current password is incorrect');
 
   const passwordHash = await bcrypt.hash(newPassword, config.security.bcryptRounds);
-  await db.query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, user.id]);
+  // Bump token_version to invalidate the caller's current JWT too — they'll
+  // be forced to re-login with the new password. A small friction cost, a
+  // clear expected-behaviour win.
+  await db.query(
+    'UPDATE users SET password_hash = $1, token_version = token_version + 1 WHERE id = $2',
+    [passwordHash, user.id]
+  );
 
   writeAudit({
     schoolId: user.school_id,
