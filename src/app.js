@@ -59,7 +59,43 @@ app.use(
     crossOriginResourcePolicy: { policy: 'cross-origin' } // API is cross-origin-fetched by the SPA
   })
 );
-app.use(cors({ origin: true, credentials: true }));
+// CORS. Two profiles:
+//   - default (for the dashboard / API)  → allowlist via CORS_ORIGINS env,
+//       credentials allowed. Blocks arbitrary sites from making authenticated
+//       cross-origin requests on behalf of a logged-in user.
+//   - /api/public/*                      → permissive, no credentials. School
+//       websites embed these endpoints; the API key in the Bearer header is
+//       the authentication, not any session cookie.
+//
+// CORS_ORIGINS is comma-separated: "https://app.schoolpay.com,https://schoolpay.com"
+// Unset ⇒ same-origin + localhost only (safe default for dev / first deploy).
+const parseAllowlist = (env) =>
+  String(env || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+const ALLOWED_ORIGINS = parseAllowlist(process.env.CORS_ORIGINS);
+const LOCALHOST_RE = /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/;
+
+function originAllowed(origin) {
+  if (!origin) return true; // same-origin / server-to-server
+  if (LOCALHOST_RE.test(origin)) return true;
+  return ALLOWED_ORIGINS.includes(origin);
+}
+
+app.use(
+  cors({
+    origin: (origin, cb) => {
+      if (originAllowed(origin)) return cb(null, true);
+      return cb(null, false); // false, not an error — browser will drop the response
+    },
+    credentials: true
+  })
+);
+// Permissive CORS for the public integration endpoints (Bearer API key auth,
+// no cookies). Applied at the router mount point below.
+const publicCors = cors({ origin: '*', credentials: false });
 app.use(cookieParser());
 
 // Structured request logging. Generates a trace_id per request, exposes it as
@@ -131,8 +167,9 @@ app.use('/api/schools', schoolsRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/subscriptions', subscriptionsRoutes);
 
-// School-website integration endpoints (Bearer API key)
-app.use('/api/public', publicRoutes);
+// School-website integration endpoints (Bearer API key). Permissive CORS:
+// API key is the authentication; there's no cookie/session to protect.
+app.use('/api/public', publicCors, publicRoutes);
 
 // Tenant-scoped API (school is resolved from JWT or API key)
 app.use('/api/students', studentsRoutes);
