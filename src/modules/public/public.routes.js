@@ -1,7 +1,6 @@
 'use strict';
 
 const express = require('express');
-const cors = require('cors');
 const ctrl = require('./public.controller');
 const { authSchoolApiKey } = require('./publicAuth');
 const asyncHandler = require('../../utils/asyncHandler');
@@ -11,10 +10,7 @@ const { idempotent } = require('../../middleware/idempotency');
 
 const router = express.Router();
 
-// Public integration endpoints are called from school websites — permissive CORS.
-router.use(cors({ origin: true, credentials: false }));
-router.options('*', cors());
-
+// CORS is applied in src/app.js (permissive profile for /api/public).
 router.use(authSchoolApiKey);
 
 // Third-party school websites can (and should) send an Idempotency-Key

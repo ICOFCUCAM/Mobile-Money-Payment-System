@@ -207,9 +207,22 @@ async function creditFromInboundPayment({ rail, externalId, reference, amountCen
   const intent = intentRes.rows[0] || null;
 
   const result = await db.withTransaction(async (client) => {
-    // 1. Append the credit to the wallet ledger
+    // 1. Atomically bump the wallet balance and read back the new value.
+    // Previously we did SELECT-compute-UPDATE which races under concurrent
+    // credits — two overlapping webhooks would each read the same starting
+    // balance and the later write would clobber the first, losing money.
+    // The atomic UPDATE ... RETURNING closes that gap — Postgres serializes
+    // the increment on the row lock.
     const walletTxId = uuid();
-    const newBalance = Number(school.wallet_balance_cents || 0) + Number(amountCents);
+    const upd = await client.query(
+      `UPDATE schools
+          SET wallet_balance_cents = wallet_balance_cents + $1,
+              updated_at = NOW()
+        WHERE id = $2
+        RETURNING wallet_balance_cents`,
+      [amountCents, school.id]
+    );
+    const newBalance = Number(upd.rows[0].wallet_balance_cents);
 
     await client.query(
       `INSERT INTO wallet_transactions
@@ -222,10 +235,6 @@ async function creditFromInboundPayment({ rail, externalId, reference, amountCen
         rawMemo || null,
         JSON.stringify({ rail, external_id: externalId, reference })
       ]
-    );
-    await client.query(
-      'UPDATE schools SET wallet_balance_cents = $1, updated_at = NOW() WHERE id = $2',
-      [newBalance, school.id]
     );
 
     // 2. If there's a matching intent, mark it paid and apply its side-effect
