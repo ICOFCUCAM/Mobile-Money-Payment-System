@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Api } from '@/lib/api';
 import { useAuth } from '@/contexts/AuthContext';
+import { checkPassword } from '@/lib/passwordPolicy';
 import { usePermissions } from '@/hooks/usePermissions';
 import { toast } from '@/components/ui/use-toast';
 import { formatDate } from '@/lib/format';
@@ -189,9 +190,12 @@ const Team: React.FC = () => {
               <Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
             </div>
             <div>
-              <Label>Temporary password (min 8)</Label>
-              <Input type="password" minLength={8} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
+              <Label>Temporary password</Label>
+              <Input type="password" minLength={10} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required />
               <p className="text-xs text-slate-500 mt-1">Share this securely. The user can change it from Settings after first login.</p>
+              {form.password && !checkPassword(form.password).ok && (
+                <p className="mt-1 text-xs text-red-600">{checkPassword(form.password).reason}</p>
+              )}
             </div>
             <div>
               <Label>Role</Label>

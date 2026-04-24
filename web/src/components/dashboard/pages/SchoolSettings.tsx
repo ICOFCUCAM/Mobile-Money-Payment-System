@@ -11,6 +11,7 @@ import { toast } from '@/components/ui/use-toast';
 import { Save, Building2, Globe, Webhook, Key, Trash2, Lock } from 'lucide-react';
 import { usePermissions } from '@/hooks/usePermissions';
 import TwoFactorCard from '@/components/dashboard/TwoFactorCard';
+import { checkPassword } from '@/lib/passwordPolicy';
 
 const SchoolSettings: React.FC = () => {
   const { school, user, refresh, logout } = useAuth();
@@ -193,10 +194,17 @@ const SchoolSettings: React.FC = () => {
             <Input type="password" value={pwForm.currentPassword} onChange={(e) => setPwForm({ ...pwForm, currentPassword: e.target.value })} required />
           </div>
           <div>
-            <Label>New password (min 8 chars)</Label>
-            <Input type="password" minLength={8} value={pwForm.newPassword} onChange={(e) => setPwForm({ ...pwForm, newPassword: e.target.value })} required />
+            <Label>New password</Label>
+            <Input type="password" minLength={10} value={pwForm.newPassword} onChange={(e) => setPwForm({ ...pwForm, newPassword: e.target.value })} required />
+            {pwForm.newPassword && !checkPassword(pwForm.newPassword).ok && (
+              <p className="mt-1 text-xs text-red-600">{checkPassword(pwForm.newPassword).reason}</p>
+            )}
           </div>
-          <Button type="submit" className="bg-blue-600 hover:bg-blue-700" disabled={changingPw}>
+          <Button
+            type="submit"
+            className="bg-blue-600 hover:bg-blue-700"
+            disabled={changingPw || !checkPassword(pwForm.newPassword).ok}
+          >
             {changingPw ? 'Updating…' : 'Update password'}
           </Button>
         </form>

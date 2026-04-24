@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Api } from '@/lib/api';
 import { toast } from '@/components/ui/use-toast';
 import { KeyRound, ArrowLeft } from 'lucide-react';
+import { checkPassword } from '@/lib/passwordPolicy';
 
 const ResetPassword: React.FC = () => {
   const [params] = useSearchParams();
@@ -14,11 +15,12 @@ const ResetPassword: React.FC = () => {
   const initialToken = params.get('token') || '';
   const [form, setForm] = useState({ token: initialToken, newPassword: '' });
   const [submitting, setSubmitting] = useState(false);
+  const pwCheck = checkPassword(form.newPassword);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (form.newPassword.length < 8) {
-      toast({ title: 'Password too short', description: 'Must be at least 8 characters.', variant: 'destructive' });
+    if (!pwCheck.ok) {
+      toast({ title: 'Password not strong enough', description: pwCheck.reason, variant: 'destructive' });
       return;
     }
     setSubmitting(true);
@@ -45,10 +47,17 @@ const ResetPassword: React.FC = () => {
             <Input value={form.token} onChange={(e) => setForm({ ...form, token: e.target.value })} required />
           </div>
           <div>
-            <Label>New password (min 8 chars)</Label>
-            <Input type="password" minLength={8} value={form.newPassword} onChange={(e) => setForm({ ...form, newPassword: e.target.value })} required />
+            <Label>New password</Label>
+            <Input type="password" minLength={10} value={form.newPassword} onChange={(e) => setForm({ ...form, newPassword: e.target.value })} required />
+            {form.newPassword && !pwCheck.ok && (
+              <p className="mt-1 text-xs text-red-600">{pwCheck.reason}</p>
+            )}
           </div>
-          <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700" disabled={submitting}>
+          <Button
+            type="submit"
+            className="w-full bg-blue-600 hover:bg-blue-700"
+            disabled={submitting || !pwCheck.ok}
+          >
             <KeyRound className="w-4 h-4 mr-2" /> {submitting ? 'Updating…' : 'Set new password'}
           </Button>
         </form>
