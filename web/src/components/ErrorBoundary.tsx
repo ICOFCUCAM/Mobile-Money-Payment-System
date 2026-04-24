@@ -1,5 +1,6 @@
 import React from 'react';
 import { captureException } from '@/lib/sentry';
+import { getLastTraceId, ApiError } from '@/lib/api';
 
 interface State { error: Error | null }
 interface Props { children: React.ReactNode; fallback?: React.ReactNode }
@@ -29,6 +30,12 @@ export class ErrorBoundary extends React.Component<Props, State> {
     if (!this.state.error) return this.props.children;
     if (this.props.fallback) return this.props.fallback;
 
+    // Prefer a trace id carried on the Error (our ApiError sets it), then
+    // fall back to the API client's last-seen trace. Gives support something
+    // to pin the incident against.
+    const traceFromError = this.state.error instanceof ApiError ? this.state.error.traceId : undefined;
+    const traceId = traceFromError || getLastTraceId();
+
     return (
       <div style={{
         minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -39,6 +46,13 @@ export class ErrorBoundary extends React.Component<Props, State> {
           <p style={{ color: '#666', marginBottom: '1.5rem' }}>
             The page failed to render. Our team has been notified.
           </p>
+          {traceId && (
+            <p style={{ color: '#999', fontSize: '0.75rem', marginBottom: '1.5rem', fontFamily: 'ui-monospace, monospace' }}>
+              Trace ID: {traceId}
+              <br />
+              <span style={{ color: '#bbb' }}>(quote this if you contact support)</span>
+            </p>
+          )}
           <button
             onClick={() => { this.setState({ error: null }); location.reload(); }}
             style={{

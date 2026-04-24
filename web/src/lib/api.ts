@@ -19,13 +19,21 @@ export class ApiError extends Error {
   status: number;
   code?: string;
   details?: unknown;
-  constructor(message: string, status: number, code?: string, details?: unknown) {
+  /** The server's x-request-id (or trace_id from body) so users can quote it
+   *  to support and operators can locate the exact request in logs/Sentry. */
+  traceId?: string;
+  constructor(message: string, status: number, code?: string, details?: unknown, traceId?: string) {
     super(message);
     this.status = status;
     this.code = code;
     this.details = details;
+    this.traceId = traceId;
   }
 }
+
+/** Latest API error trace_id, exposed for ErrorBoundary to surface. */
+let lastTraceId: string | undefined;
+export function getLastTraceId() { return lastTraceId; }
 
 export function getToken(): string | null {
   return localStorage.getItem(TOKEN_KEY);
@@ -75,14 +83,16 @@ async function request<T = unknown>(method: string, path: string, body?: unknown
       msg = `HTTP ${res.status}${res.statusText ? ` ${res.statusText}` : ''}`;
     }
     const code = data && data.error && data.error.code;
-    const err = new ApiError(msg, res.status, code, data?.error?.details);
+    const traceId = (data && data.error && data.error.trace_id) || res.headers.get('x-request-id') || undefined;
+    lastTraceId = traceId;
+    const err = new ApiError(msg, res.status, code, data?.error?.details, traceId);
     if (res.status === 401 && token) {
       // Expired / revoked — clear and let AuthContext's session-load pick it up.
       setToken(null);
     }
     // Surface in console for inspection during debugging.
     // eslint-disable-next-line no-console
-    console.error(`[api] ${method} ${path} →`, res.status, data || '(no body)');
+    console.error(`[api] ${method} ${path} →`, res.status, data || '(no body)', traceId ? `(trace: ${traceId})` : '');
     throw err;
   }
   return data as T;
