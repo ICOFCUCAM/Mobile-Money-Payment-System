@@ -105,13 +105,31 @@ const CITIES: City[] = [
   { name: 'Dakar',        country: 'Senegal',      coordinates: [-17.45, 14.69] },
   { name: 'Accra',        country: 'Ghana',        coordinates: [-0.19,   5.60] },
   { name: 'Lagos',        country: 'Nigeria',      coordinates: [ 3.38,   6.52] },
+  { name: 'Douala',       country: 'Cameroon',     coordinates: [ 9.70,   4.05] },
   { name: 'Addis Ababa',  country: 'Ethiopia',     coordinates: [38.75,   9.03] },
   { name: 'Nairobi',      country: 'Kenya',        coordinates: [36.82,  -1.29] },
   { name: 'Kinshasa',     country: 'DRC',          coordinates: [15.27,  -4.44] },
   { name: 'Luanda',       country: 'Angola',       coordinates: [13.23,  -8.84] },
   { name: 'Johannesburg', country: 'South Africa', coordinates: [28.05, -26.20] }
 ];
-const HUB: City = { name: 'Douala', country: 'Cameroon', coordinates: [9.70, 4.05] };
+
+const byName = (n: string) => CITIES.find((c) => c.name === n)!;
+
+// Curated point-to-point routes. A mix of pairs so flow reads as a
+// continental network rather than a hub-and-spoke collapse onto one city.
+// Each endpoint appears at most twice to keep the map visually balanced.
+const ROUTES: Array<[City, City]> = [
+  [byName('Casablanca'),   byName('Cairo')],
+  [byName('Dakar'),        byName('Lagos')],
+  [byName('Accra'),        byName('Addis Ababa')],
+  [byName('Lagos'),        byName('Nairobi')],
+  [byName('Douala'),       byName('Johannesburg')],
+  [byName('Kinshasa'),     byName('Dakar')],
+  [byName('Luanda'),       byName('Nairobi')],
+  [byName('Addis Ababa'),  byName('Casablanca')],
+  [byName('Cairo'),        byName('Johannesburg')],
+  [byName('Douala'),       byName('Accra')]
+];
 
 // Projection tuned to the African continent.
 const PROJECTION_CONFIG = {
@@ -153,8 +171,6 @@ function arc(a: City, b: City, lift = 90): string {
 }
 
 export const AfricaMap: React.FC<{ className?: string }> = ({ className }) => {
-  const hubPos = project(HUB.coordinates);
-
   return (
     <div className={className}>
       <ComposableMap
@@ -203,11 +219,13 @@ export const AfricaMap: React.FC<{ className?: string }> = ({ className }) => {
           }
         </Geographies>
 
-        {/* Animated arcs from each city to the Douala hub */}
-        {CITIES.map((c, i) => (
+        {/* Animated point-to-point routes. Each is its own great-circle-ish
+            arc between two real cities; staggered start delays keep the
+            overall rhythm feeling like a living network. */}
+        {ROUTES.map(([from, to], i) => (
           <path
-            key={`arc-${c.name}`}
-            d={arc(c, HUB, 90 + (i % 3) * 30)}
+            key={`route-${from.name}-${to.name}`}
+            d={arc(from, to, 80 + (i % 4) * 25)}
             fill="none"
             stroke="url(#heroArc)"
             strokeWidth={1.4}
@@ -218,14 +236,14 @@ export const AfricaMap: React.FC<{ className?: string }> = ({ className }) => {
               attributeName="stroke-dashoffset"
               values="800;0;-400"
               dur="6s"
-              begin={`${i * 0.5}s`}
+              begin={`${(i * 0.6) % 6}s`}
               repeatCount="indefinite"
             />
             <animate
               attributeName="opacity"
               values="0;1;0"
               dur="6s"
-              begin={`${i * 0.5}s`}
+              begin={`${(i * 0.6) % 6}s`}
               repeatCount="indefinite"
             />
           </path>
@@ -249,18 +267,6 @@ export const AfricaMap: React.FC<{ className?: string }> = ({ className }) => {
           );
         })}
 
-        {/* Douala hub — bigger, with a concentric pulse ring */}
-        <g>
-          <circle cx={hubPos[0]} cy={hubPos[1]} r={30} fill="url(#cityGlow)" opacity={0.9}>
-            <animate attributeName="r" values="22;36;22" dur="2.5s" repeatCount="indefinite" />
-          </circle>
-          <circle cx={hubPos[0]} cy={hubPos[1]} r={9} fill="none" stroke="#F59E0B" strokeWidth={1.4}>
-            <animate attributeName="r"       values="6;14;6"    dur="2.5s" repeatCount="indefinite" />
-            <animate attributeName="opacity" values="0.9;0;0.9" dur="2.5s" repeatCount="indefinite" />
-          </circle>
-          <circle cx={hubPos[0]} cy={hubPos[1]} r={5}   fill="#F59E0B" />
-          <circle cx={hubPos[0]} cy={hubPos[1]} r={1.8} fill="#ffffff" />
-        </g>
       </ComposableMap>
     </div>
   );
