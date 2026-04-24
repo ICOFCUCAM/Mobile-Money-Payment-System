@@ -14,5 +14,6 @@
 
 module.exports = [
   require('./001_initial_schema'),
-  require('./002_token_version')
+  require('./002_token_version'),
+  require('./003_wallet_nonnegative')
 ];

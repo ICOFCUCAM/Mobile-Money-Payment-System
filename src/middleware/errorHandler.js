@@ -24,6 +24,7 @@ const PG_CODE_MAP = {
   '23505': { status: 409, code: 'CONFLICT',       message: 'Resource already exists' },      // unique_violation
   '23503': { status: 409, code: 'FOREIGN_KEY',    message: 'Referenced resource missing' },  // foreign_key_violation
   '23502': { status: 400, code: 'MISSING_FIELD',  message: 'A required field was missing' }, // not_null_violation
+  '23514': { status: 400, code: 'INVALID_INPUT',  message: 'Request would violate a data invariant' }, // check_violation
   '22P02': { status: 400, code: 'INVALID_INPUT',  message: 'Malformed input' },              // invalid_text_representation
   '57014': { status: 504, code: 'DB_TIMEOUT',     message: 'Database query timed out' }      // query_canceled (statement_timeout)
 };
