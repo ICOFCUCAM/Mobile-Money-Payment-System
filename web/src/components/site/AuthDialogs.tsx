@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/components/ui/use-toast';
+import { checkPassword } from '@/lib/passwordPolicy';
 
 export type AuthMode = 'login' | 'register' | null;
 
@@ -210,10 +211,42 @@ export const AuthDialogs: React.FC<Props> = ({ mode, setMode, defaultPlan = 'bas
                 <Input value={registerForm.fullName} onChange={(e) => setRegisterForm({ ...registerForm, fullName: e.target.value })} required />
               </div>
               <div>
-                <Label>Password (min 8 chars)</Label>
-                <Input type="password" minLength={8} value={registerForm.password} onChange={(e) => setRegisterForm({ ...registerForm, password: e.target.value })} required />
+                <Label>Password</Label>
+                <Input
+                  type="password"
+                  minLength={10}
+                  value={registerForm.password}
+                  onChange={(e) => setRegisterForm({ ...registerForm, password: e.target.value })}
+                  required
+                />
+                {(() => {
+                  const c = checkPassword(registerForm.password);
+                  if (!registerForm.password) {
+                    return <p className="mt-1 text-xs text-slate-500">At least 10 chars, mix 3 of: lowercase, UPPERCASE, digits, symbols.</p>;
+                  }
+                  const bars = [0, 1, 2, 3].map((i) => (
+                    <span
+                      key={i}
+                      className={`h-1 flex-1 rounded ${
+                        i < c.score
+                          ? c.score <= 2 ? 'bg-red-400' : c.score === 3 ? 'bg-amber-400' : 'bg-emerald-500'
+                          : 'bg-slate-200'
+                      }`}
+                    />
+                  ));
+                  return (
+                    <>
+                      <div className="mt-2 flex gap-1">{bars}</div>
+                      {!c.ok && <p className="mt-1 text-xs text-red-600">{c.reason}</p>}
+                    </>
+                  );
+                })()}
               </div>
-              <Button type="submit" className="w-full bg-royal hover:bg-royal-700 text-white">
+              <Button
+                type="submit"
+                className="w-full bg-royal hover:bg-royal-700 text-white"
+                disabled={!checkPassword(registerForm.password).ok}
+              >
                 Continue to billing
               </Button>
               <div className="text-center text-sm">
