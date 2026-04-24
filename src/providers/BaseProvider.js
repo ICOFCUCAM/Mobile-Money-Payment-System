@@ -7,6 +7,12 @@
  * so they never reach into the database themselves. Add a new provider by
  * subclassing this file and registering it in ProviderFactory.
  */
+// Default per-request timeout for outbound provider calls. Provider APIs
+// sometimes stall; without a timeout the lambda hangs until Vercel kills it
+// (15s) and the user sees no error. 8s default leaves room for Postgres and
+// response serialization within the 15s budget.
+const PROVIDER_HTTP_TIMEOUT_MS = parseInt(process.env.PROVIDER_HTTP_TIMEOUT_MS || '8000', 10);
+
 class BaseProvider {
   static get id() {
     throw new Error('Provider must implement static "id"');
@@ -16,6 +22,24 @@ class BaseProvider {
     this.credentials = credentials || {};
     this.baseUrl = baseUrl;
     this.metadata = metadata || {};
+  }
+
+  /**
+   * fetch() wrapper with an AbortController timeout. Subclasses should use
+   * this.fetch(url, options) instead of the global fetch so no provider
+   * call can hang past PROVIDER_HTTP_TIMEOUT_MS. Callers still get the
+   * usual Response object on success; on timeout, the underlying AbortError
+   * surfaces — subclasses already wrap verifyTransaction in try/catch.
+   */
+  async fetch(url, options = {}) {
+    const { timeoutMs = PROVIDER_HTTP_TIMEOUT_MS, ...rest } = options;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(new Error(`Provider HTTP timeout after ${timeoutMs}ms`)), timeoutMs);
+    try {
+      return await fetch(url, { ...rest, signal: controller.signal });
+    } finally {
+      clearTimeout(timer);
+    }
   }
 
   /**

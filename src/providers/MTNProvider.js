@@ -19,7 +19,7 @@ class MTNProvider extends BaseProvider {
   async _getAccessToken() {
     const { api_key: apiKey, api_secret: apiSecret } = this.credentials;
     const basic = Buffer.from(`${apiKey}:${apiSecret}`).toString('base64');
-    const res = await fetch(`${this.baseUrl}/collection/token/`, {
+    const res = await this.fetch(`${this.baseUrl}/collection/token/`, {
       method: 'POST',
       headers: {
         Authorization: `Basic ${basic}`,
@@ -34,7 +34,7 @@ class MTNProvider extends BaseProvider {
   async verifyTransaction(externalId) {
     try {
       const token = await this._getAccessToken();
-      const res = await fetch(`${this.baseUrl}/collection/v1_0/requesttopay/${encodeURIComponent(externalId)}`, {
+      const res = await this.fetch(`${this.baseUrl}/collection/v1_0/requesttopay/${encodeURIComponent(externalId)}`, {
         headers: {
           Authorization: `Bearer ${token}`,
           'X-Target-Environment': this.metadata.environment || 'sandbox',

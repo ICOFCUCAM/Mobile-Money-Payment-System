@@ -16,7 +16,7 @@ class OrangeProvider extends BaseProvider {
   async _getAccessToken() {
     const { api_key: apiKey, api_secret: apiSecret } = this.credentials;
     const basic = Buffer.from(`${apiKey}:${apiSecret}`).toString('base64');
-    const res = await fetch(`${this.baseUrl}/oauth/v3/token`, {
+    const res = await this.fetch(`${this.baseUrl}/oauth/v3/token`, {
       method: 'POST',
       headers: {
         Authorization: `Basic ${basic}`,
@@ -32,7 +32,7 @@ class OrangeProvider extends BaseProvider {
   async verifyTransaction(externalId) {
     try {
       const token = await this._getAccessToken();
-      const res = await fetch(
+      const res = await this.fetch(
         `${this.baseUrl}/webpayment/v1/transactionstatus?order_id=${encodeURIComponent(externalId)}`,
         { headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' } }
       );
