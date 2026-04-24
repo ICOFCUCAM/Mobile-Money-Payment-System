@@ -10,6 +10,7 @@
     "migrate:status": "node scripts/migrate.js status",
     "cleanup": "node scripts/cleanup.js",
     "test": "node --test tests/*.test.js",
+    "test:db-free": "node --test tests/password-policy.test.js tests/migrator.test.js tests/cleanup.test.js tests/idempotency.test.js tests/validateEnv.test.js tests/errorHandler.test.js",
     "test:smoke": "node tests/smoke.js"
   },
   "keywords": [
