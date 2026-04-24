@@ -9,8 +9,14 @@ const cookieParser = require('cookie-parser');
 const config = require('./config');
 const logger = require('./core/logger');
 const sentry = require('./core/sentry');
+const { validateEnv } = require('./core/validateEnv');
 const { apiLimiter } = require('./middleware/rateLimiter');
 const { notFound, errorHandler } = require('./middleware/errorHandler');
+
+// Fail loudly at import time in production if critical env vars are missing
+// or still set to their dev-only defaults. In non-production this warns
+// and continues so local dev and tests don't need the full config surface.
+validateEnv({ logger });
 
 // Boot Sentry eagerly so the very first exception is captured. No-op if
 // SENTRY_DSN is unset.
