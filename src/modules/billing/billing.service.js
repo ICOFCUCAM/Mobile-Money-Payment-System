@@ -185,11 +185,23 @@ async function creditFromInboundPayment({ rail, externalId, reference, amountCen
     return { credited: false, reason: 'no_matching_school' };
   }
 
-  // Dedupe: if we've already recorded a wallet_transactions row for this
-  // (rail, externalId), skip.
+  // Dedupe: (school_id, rail, external_id) uniqueness. Uses the partial
+  // UNIQUE idx_wallet_tx_school_rail_extid — indexed equality lookup, O(1)
+  // regardless of school size. Legacy rows without the new columns fall
+  // through to the LIKE check; migration 004 backfilled those where meta
+  // parsed as JSON, and the wallet is young enough that residual rows are
+  // fine. Either match returns 'duplicate'.
   const dupeCheck = await db.query(
-    "SELECT id FROM wallet_transactions WHERE meta LIKE $1 AND school_id = $2 LIMIT 1",
-    [`%"rail":"${rail}","external_id":"${externalId}"%`, school.id]
+    `SELECT 1
+       FROM wallet_transactions
+      WHERE school_id = $1
+        AND ( (rail = $2 AND external_id = $3)
+              OR (rail IS NULL AND meta LIKE $4) )
+      LIMIT 1`,
+    [
+      school.id, rail, externalId,
+      `%"rail":"${rail}","external_id":"${externalId}"%`
+    ]
   );
   if (dupeCheck.rows.length) {
     return { credited: false, reason: 'duplicate', schoolId: school.id };
@@ -226,14 +238,16 @@ async function creditFromInboundPayment({ rail, externalId, reference, amountCen
 
     await client.query(
       `INSERT INTO wallet_transactions
-        (id, school_id, kind, amount_cents, balance_after, currency, billing_intent_id, memo, meta)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)`,
+        (id, school_id, kind, amount_cents, balance_after, currency,
+         billing_intent_id, memo, meta, rail, external_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
       [
         walletTxId, school.id, rail === 'bank_transfer' ? 'topup_bank' : 'topup_momo',
         amountCents, newBalance, currency || 'USD',
         intent ? intent.id : null,
         rawMemo || null,
-        JSON.stringify({ rail, external_id: externalId, reference })
+        JSON.stringify({ rail, external_id: externalId, reference }),
+        rail, externalId
       ]
     );
 
